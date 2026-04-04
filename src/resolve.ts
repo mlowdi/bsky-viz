@@ -27,6 +27,10 @@ export async function resolveHandles(db: Database, dids: string[]): Promise<Reco
       result[did] = handle;
       cacheHandle(db, did, handle);
     }
+    // Small delay between API calls to avoid rate limits
+    if (misses.length > 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
 
   return result;
