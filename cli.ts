@@ -3,6 +3,7 @@ import { fetchRepo } from './src/ingest/fetch.js';
 import { parseCarRecords } from './src/ingest/parse.js';
 import { normalizeRecords } from './src/ingest/normalize.js';
 import { upsertRepo, insertRecordBatch } from './src/db/queries.js';
+import { resolveHandles } from './src/resolve.js';
 import { createApp } from './src/server/index.js';
 
 const command = process.argv[2];
@@ -34,9 +35,13 @@ if (command === 'ingest') {
   console.log('Normalizing and storing...');
   const normalized = normalizeRecords(did, rawRecords);
 
+  // Resolve handle for display
+  const handles = await resolveHandles(db, [did]);
+  const handle = handles[did] || (input.startsWith('did:') ? null : input);
+
   upsertRepo(db, {
     did,
-    handle: null, // TODO: resolve handle for display
+    handle,
     display_name: null,
     fetched_at: Date.now(),
     commit_cid: commitCid,

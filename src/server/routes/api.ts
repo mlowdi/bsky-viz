@@ -4,11 +4,20 @@ import { getActivityHeatmap, getActivityTimeline } from '../../analysis/activity
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
 import { getRepos, getRepo, getRecordCount } from '../../db/queries.js';
+import { resolveHandles } from '../../resolve.js';
 
 export function apiRoutes(db: Database): Hono {
   const api = new Hono();
 
   api.get('/repos', (c) => c.json(getRepos(db)));
+
+  api.get('/resolve-handles', async (c) => {
+    const didsParam = c.req.query('dids');
+    if (!didsParam) return c.json({});
+    const dids = didsParam.split(',').filter(Boolean);
+    const handles = await resolveHandles(db, dids);
+    return c.json(handles);
+  });
 
   api.get('/repos/:did/summary', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
@@ -34,10 +43,17 @@ export function apiRoutes(db: Database): Hono {
     return c.json(getContentRatios(db, did));
   });
 
-  api.get('/repos/:did/interactions/top', (c) => {
+  api.get('/repos/:did/interactions/top', async (c) => {
     const did = decodeURIComponent(c.req.param('did'));
     const limit = parseInt(c.req.query('limit') || '20');
-    return c.json(getTopInteractions(db, did, limit));
+    const interactions = getTopInteractions(db, did, limit);
+    const dids = interactions.map(i => i.did).filter(Boolean);
+    const handles = await resolveHandles(db, dids);
+    const enriched = interactions.map(i => ({
+      ...i,
+      handle: handles[i.did] || null,
+    }));
+    return c.json(enriched);
   });
 
   api.get('/repos/:did/social/follows', (c) => {

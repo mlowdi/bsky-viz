@@ -44,3 +44,22 @@ export function getRecordCount(db: Database, did: string): Record<string, number
   ).all(did) as { collection: string; count: number }[];
   return Object.fromEntries(rows.map(r => [r.collection, r.count]));
 }
+
+export function getCachedHandle(db: Database, did: string): string | null {
+  const row = db.query('SELECT handle FROM handle_cache WHERE did = ?').get(did) as { handle: string } | null;
+  return row?.handle ?? null;
+}
+
+export function getCachedHandles(db: Database, dids: string[]): Record<string, string> {
+  if (dids.length === 0) return {};
+  const placeholders = dids.map(() => '?').join(',');
+  const rows = db.query(`SELECT did, handle FROM handle_cache WHERE did IN (${placeholders})`).all(...dids) as { did: string; handle: string }[];
+  return Object.fromEntries(rows.map(r => [r.did, r.handle]));
+}
+
+export function cacheHandle(db: Database, did: string, handle: string): void {
+  db.run(
+    'INSERT OR REPLACE INTO handle_cache (did, handle, resolved_at) VALUES (?, ?, ?)',
+    [did, handle, Date.now()]
+  );
+}

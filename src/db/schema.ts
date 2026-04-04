@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS records (
   UNIQUE(repo_did, collection, rkey)
 );
 
+CREATE TABLE IF NOT EXISTS handle_cache (
+  did TEXT PRIMARY KEY,
+  handle TEXT NOT NULL,
+  resolved_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_records_repo_collection ON records(repo_did, collection);
 CREATE INDEX IF NOT EXISTS idx_records_created_at ON records(created_at);
 CREATE INDEX IF NOT EXISTS idx_records_subject_did ON records(subject_did);
