@@ -74,3 +74,13 @@ export function cacheHandle(db: Database, did: string, handle: string): void {
     [did, handle, Date.now()]
   );
 }
+
+export function updateEmbedding(db: Database, id: number, embedding: Buffer): void {
+  db.run('UPDATE records SET embedding = ? WHERE id = ?', [embedding, id]);
+}
+
+export function getPostsWithoutEmbeddings(db: Database, did: string): { id: number; raw_json: string }[] {
+  return db.query(
+    "SELECT id, raw_json FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND embedding IS NULL AND raw_json IS NOT NULL"
+  ).all(did) as { id: number; raw_json: string }[];
+}
