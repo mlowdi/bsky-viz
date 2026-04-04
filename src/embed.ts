@@ -1,28 +1,42 @@
 import { Database } from 'bun:sqlite';
 import { updateEmbedding, getPostsWithoutEmbeddings } from './db/queries.js';
 
-export async function embedTexts(texts: string[], opts?: { model?: string, baseUrl?: string }): Promise<number[][]> {
-  const model = opts?.model || 'snowflake-arctic-embed2';
-  const baseUrl = opts?.baseUrl || 'http://localhost:11434';
-  
+async function embedOne(text: string, model: string, baseUrl: string): Promise<number[] | null> {
   try {
     const res = await fetch(`${baseUrl}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, input: texts })
+      body: JSON.stringify({ model, input: text })
     });
-    
+
     if (!res.ok) {
       console.error(`Ollama API error: ${res.status} ${res.statusText}`);
-      return [];
+      return null;
     }
-    
+
     const data = await res.json() as any;
-    return data.embeddings || [];
+    return data.embeddings?.[0] || null;
   } catch (err) {
-    console.error(`Failed to embed texts:`, err);
-    return [];
+    console.error(`Failed to embed text:`, err);
+    return null;
   }
+}
+
+export async function embedTexts(texts: string[], opts?: { model?: string, baseUrl?: string }): Promise<number[][]> {
+  const model = opts?.model || 'snowflake-arctic-embed2';
+  const baseUrl = opts?.baseUrl || 'http://localhost:11434';
+
+  // Send one at a time — some Ollama models don't support batch decode
+  const results: number[][] = [];
+  for (const text of texts) {
+    const emb = await embedOne(text, model, baseUrl);
+    if (emb) {
+      results.push(emb);
+    } else {
+      results.push([]); // placeholder to keep indices aligned
+    }
+  }
+  return results;
 }
 
 export async function embedRecords(db: Database, did: string, opts?: { batchSize?: number, model?: string, baseUrl?: string }): Promise<number> {
@@ -72,6 +86,7 @@ export async function embedRecords(db: Database, did: string, opts?: { batchSize
       for (let j = 0; j < batchRecords.length; j++) {
         const id = batchRecords[j].id;
         const emb = batchEmbeddings[j];
+        if (emb.length === 0) continue; // skip failed embeddings
         const float32Array = new Float32Array(emb);
         const buffer = Buffer.from(float32Array.buffer);
         updateEmbedding(db, id, buffer);
