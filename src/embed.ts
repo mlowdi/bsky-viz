@@ -1,12 +1,12 @@
 import { Database } from 'bun:sqlite';
 import { updateEmbedding, getPostsWithoutEmbeddings } from './db/queries.js';
 
-async function embedOne(text: string, model: string, baseUrl: string): Promise<number[] | null> {
+async function embedBatch(texts: string[], model: string, baseUrl: string): Promise<number[][] | null> {
   try {
     const res = await fetch(`${baseUrl}/api/embed`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, input: text })
+      body: JSON.stringify({ model, input: texts })
     });
 
     if (!res.ok) {
@@ -15,9 +15,9 @@ async function embedOne(text: string, model: string, baseUrl: string): Promise<n
     }
 
     const data = await res.json() as any;
-    return data.embeddings?.[0] || null;
+    return data.embeddings || null;
   } catch (err) {
-    console.error(`Failed to embed text:`, err);
+    console.error(`Failed to embed texts:`, err);
     return null;
   }
 }
@@ -26,14 +26,22 @@ export async function embedTexts(texts: string[], opts?: { model?: string, baseU
   const model = opts?.model || 'snowflake-arctic-embed2';
   const baseUrl = opts?.baseUrl || 'http://localhost:11434';
 
-  // Send one at a time — some Ollama models don't support batch decode
   const results: number[][] = [];
-  for (const text of texts) {
-    const emb = await embedOne(text, model, baseUrl);
-    if (emb) {
-      results.push(emb);
-    } else {
-      results.push([]); // placeholder to keep indices aligned
+  const chunkSize = 10;
+  
+  for (let i = 0; i < texts.length; i += chunkSize) {
+    const chunk = texts.slice(i, i + chunkSize);
+    const embs = await embedBatch(chunk, model, baseUrl);
+    
+    if (!embs || embs.length === 0) {
+      console.error(`Zero embeddings returned for chunk. Stopping process.`);
+      throw new Error("Zero embeddings returned");
+    }
+
+    console.log(`Received ${embs.length} embeddings, dimension of first: ${embs[0]?.length || 0}`);
+    
+    for (const emb of embs) {
+      results.push(emb || []);
     }
   }
   return results;
@@ -77,23 +85,41 @@ export async function embedRecords(db: Database, did: string, opts?: { batchSize
     const texts = batch.map(r => r.text);
     
     const embeddings = await embedTexts(texts, opts);
+    
+    let validCount = 0;
+    for (const emb of embeddings) {
+      if (emb && emb.length > 0) validCount++;
+    }
+    console.log(`Received ${validCount}/${embeddings.length} valid embeddings`);
+    
     if (embeddings.length !== texts.length) {
       console.error(`Mismatch between requested texts (${texts.length}) and received embeddings (${embeddings.length})`);
       continue;
     }
     
+    let storedInBatch = 0;
     const tx = db.transaction((batchRecords: typeof batch, batchEmbeddings: number[][]) => {
       for (let j = 0; j < batchRecords.length; j++) {
         const id = batchRecords[j].id;
         const emb = batchEmbeddings[j];
-        if (emb.length === 0) continue; // skip failed embeddings
+        if (!emb || emb.length === 0) continue; // skip failed embeddings
         const float32Array = new Float32Array(emb);
         const buffer = Buffer.from(float32Array.buffer);
         updateEmbedding(db, id, buffer);
+        storedInBatch++;
       }
     });
     
     tx(batch, embeddings);
+    
+    const countRow = db.query(`SELECT COUNT(*) as count FROM records WHERE repo_did = ? AND embedding IS NOT NULL`).get(did) as { count: number };
+    const totalStored = countRow.count;
+    console.log(`Verified total stored embeddings for ${did}: ${totalStored}`);
+    
+    if (storedInBatch === 0) {
+      console.error(`No embeddings were stored after this batch. Stopping process.`);
+      throw new Error("Storage validation failed: 0 embeddings stored in batch");
+    }
     
     embeddedCount += batch.length;
     console.log(`Embedded batch ${Math.ceil((i + batchSize) / batchSize)}/${Math.ceil(totalValid / batchSize)} (${embeddedCount}/${totalValid} records)`);
