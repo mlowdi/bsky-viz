@@ -29,7 +29,12 @@ bun install
    bun run cli.ts serve
    ```
 
-3. Open the UI at `http://localhost:3000`
+3. (Optional) Generate embeddings:
+   ```bash
+   bun run cli.ts embed <did-or-handle> [--model snowflake-arctic-embed2] [--batch-size 50] [--url http://localhost:11434]
+   ```
+
+4. Open the UI at `http://localhost:3000`
 
 ## Features
 - Activity heatmap (day x hour, Monday-first, timezone selector)

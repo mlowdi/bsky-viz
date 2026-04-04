@@ -4,9 +4,9 @@
 
 ### Root Files
 - **`cli.ts`**
-  - **Purpose:** The entry point for the application to handle CLI commands (`ingest` to fetch repo data and `serve` to run the web interface).
+  - **Purpose:** The entry point for the application to handle CLI commands (`ingest`, `serve`, `embed`).
   - **Key exports/functions:** None (executable script).
-  - **Local Dependencies:** `src/db/schema.js`, `src/ingest/fetch.js`, `src/ingest/parse.js`, `src/ingest/normalize.js`, `src/db/queries.js`, `src/resolve.js`, `src/server/index.js`.
+  - **Local Dependencies:** `src/db/schema.js`, `src/ingest/fetch.js`, `src/ingest/parse.js`, `src/ingest/normalize.js`, `src/db/queries.js`, `src/resolve.js`, `src/server/index.js`, `src/embed.js`.
   - **External Dependencies:** None.
 - **`package.json`**
   - **Purpose:** Defines project metadata, scripts, and dependencies for the backend.
@@ -34,6 +34,11 @@
   - **Purpose:** Resolves Bluesky DIDs to handles by querying the public AppView and utilizing local caching.
   - **Key exports:** `resolveHandles`.
   - **Local Dependencies:** `./db/queries.js`.
+  - **External Dependencies:** `bun:sqlite`.
+- **`src/embed.ts`**
+  - **Purpose:** Generates vector embeddings for ingested post records via Ollama and stores them in the `records.embedding` BLOB column.
+  - **Key exports:** `embedRecords`.
+  - **Local Dependencies:** None.
   - **External Dependencies:** `bun:sqlite`.
 - **`src/ingest/fetch.ts`**
   - **Purpose:** Resolves handles to DIDs, discovers PDS endpoints, and downloads CAR files containing repository data.
@@ -194,7 +199,7 @@
   - Rich frontend integration that effectively renders ECharts using parallel data fetching pipelines.
   - Handle resolution caching mechanisms.
 - **Incomplete / TODO**:
-  - The `embedding` field in the `records` table is defined as a `BLOB` but explicitly filled with `null` during `normalize.ts` (needs an embedding generator).
+  - The `embedding` field is populated via `bun run cli.ts embed` using Ollama. Clustering and semantic search on embeddings are not yet implemented.
   - Input validation is sparse: error responses heavily depend on passing errors directly via generic exception catchers onto the UI.
   - CLI `ingest` processes function autonomously from the webserver. An automatic UI refresh logic via WebSockets or long polling is not currently implemented.
 - **Known Issues**:
