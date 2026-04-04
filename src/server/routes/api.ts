@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
 import { Database } from 'bun:sqlite';
-import { getActivityHeatmap, getActivityTimeline } from '../../analysis/activity.js';
+import { getActivityHeatmap, getActivityTimeline, getAvailablePeriods } from '../../analysis/activity.js';
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
 import { getRepos, getRepo, getRecordCount } from '../../db/queries.js';
 import { resolveHandles } from '../../resolve.js';
+
+function getTimeParams(c: any) {
+  const startStr = c.req.query('start');
+  const endStr = c.req.query('end');
+  const start = startStr ? Number(startStr) : undefined;
+  const end = endStr ? Number(endStr) : undefined;
+  return { start, end };
+}
 
 export function apiRoutes(db: Database): Hono {
   const api = new Hono();
@@ -27,26 +35,36 @@ export function apiRoutes(db: Database): Hono {
     return c.json({ ...repo, counts });
   });
 
+  api.get('/repos/:did/periods', (c) => {
+    const did = decodeURIComponent(c.req.param('did'));
+    const periods = getAvailablePeriods(db, did);
+    return c.json({ periods });
+  });
+
   api.get('/repos/:did/activity/heatmap', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
     const collection = c.req.query('collection') || undefined;
-    return c.json(getActivityHeatmap(db, did, collection));
+    const { start, end } = getTimeParams(c);
+    return c.json(getActivityHeatmap(db, did, collection, start, end));
   });
 
   api.get('/repos/:did/activity/timeline', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
-    return c.json(getActivityTimeline(db, did));
+    const { start, end } = getTimeParams(c);
+    return c.json(getActivityTimeline(db, did, start, end));
   });
 
   api.get('/repos/:did/ratios', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
-    return c.json(getContentRatios(db, did));
+    const { start, end } = getTimeParams(c);
+    return c.json(getContentRatios(db, did, start, end));
   });
 
   api.get('/repos/:did/interactions/top', async (c) => {
     const did = decodeURIComponent(c.req.param('did'));
     const limit = parseInt(c.req.query('limit') || '20');
-    const interactions = getTopInteractions(db, did, limit);
+    const { start, end } = getTimeParams(c);
+    const interactions = getTopInteractions(db, did, limit, start, end);
     const dids = interactions.map(i => i.did).filter(Boolean);
     const handles = await resolveHandles(db, dids);
     const enriched = interactions.map(i => ({
@@ -58,12 +76,14 @@ export function apiRoutes(db: Database): Hono {
 
   api.get('/repos/:did/social/follows', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
-    return c.json(getFollowTimeline(db, did));
+    const { start, end } = getTimeParams(c);
+    return c.json(getFollowTimeline(db, did, start, end));
   });
 
   api.get('/repos/:did/social/blocks', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
-    return c.json(getBlockTimeline(db, did));
+    const { start, end } = getTimeParams(c);
+    return c.json(getBlockTimeline(db, did, start, end));
   });
 
   return api;
