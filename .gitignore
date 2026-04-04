@@ -4,6 +4,7 @@
 !.exo/roles/
 !.exo/lib/
 !.exo/rules/
+**/.exo/
 
 # Claude / Gemini tooling
 .claude/
@@ -22,6 +23,8 @@ dist/
 
 # Database files
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.db
 
 # OS
