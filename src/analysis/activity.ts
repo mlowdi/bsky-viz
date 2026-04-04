@@ -19,11 +19,11 @@ export function getActivityHeatmap(
   }
   if (start !== undefined) {
     where += ' AND created_at >= ?';
-    params.push(start);
+    params.push(start * 1000);
   }
   if (end !== undefined) {
     where += ' AND created_at <= ?';
-    params.push(end);
+    params.push(end * 1000);
   }
   const sql = `SELECT
     CAST(strftime('%w', created_at/1000, 'unixepoch') AS INTEGER) as dayOfWeek,
@@ -43,11 +43,11 @@ export function getActivityTimeline(
   const params: any[] = [did];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
-    params.push(start);
+    params.push(start * 1000);
   }
   if (end !== undefined) {
     where += ' AND created_at <= ?';
-    params.push(end);
+    params.push(end * 1000);
   }
   const sql = `SELECT
     strftime('%Y-%m-%d', created_at/1000, 'unixepoch') as date,

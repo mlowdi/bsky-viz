@@ -11,11 +11,11 @@ export function getTopInteractions(
   const timeParams: any[] = [];
   if (start !== undefined) {
     timeFilter += ' AND created_at >= ?';
-    timeParams.push(start);
+    timeParams.push(start * 1000);
   }
   if (end !== undefined) {
     timeFilter += ' AND created_at <= ?';
-    timeParams.push(end);
+    timeParams.push(end * 1000);
   }
 
   // Union of:

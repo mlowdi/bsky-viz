@@ -7,11 +7,11 @@ export function getFollowTimeline(db: Database, did: string, start?: number, end
   const params: any[] = [did];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
-    params.push(start);
+    params.push(start * 1000);
   }
   if (end !== undefined) {
     where += ' AND created_at <= ?';
-    params.push(end);
+    params.push(end * 1000);
   }
   const sql = `SELECT created_at, collection, subject_did
     FROM records
@@ -26,11 +26,11 @@ export function getBlockTimeline(db: Database, did: string, start?: number, end?
   const params: any[] = [did];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
-    params.push(start);
+    params.push(start * 1000);
   }
   if (end !== undefined) {
     where += ' AND created_at <= ?';
-    params.push(end);
+    params.push(end * 1000);
   }
   const sql = `SELECT created_at, collection, subject_did
     FROM records
