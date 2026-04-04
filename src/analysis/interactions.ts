@@ -23,7 +23,7 @@ export function getTopInteractions(
   // 2. Reposts: subject_did from collection='app.bsky.feed.repost'
   // 3. Replies: reply_parent_did from collection='app.bsky.feed.post' WHERE is_reply=1
   const sql = `
-    SELECT did, collection, count FROM (
+    WITH interactions AS (
       SELECT subject_did as did, 'app.bsky.feed.like' as collection, COUNT(*) as count
       FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.like' AND subject_did IS NOT NULL AND subject_did != ? ${timeFilter}
       GROUP BY subject_did
@@ -36,8 +36,15 @@ export function getTopInteractions(
       FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND is_reply = 1 AND reply_parent_did IS NOT NULL AND reply_parent_did != ? ${timeFilter}
       GROUP BY reply_parent_did
     )
-    ORDER BY count DESC
-    LIMIT ?`;
+    SELECT i.did, i.collection, i.count
+    FROM interactions i
+    JOIN (
+      SELECT did, SUM(count) as total_interactions
+      FROM interactions
+      GROUP BY did
+      ORDER BY total_interactions DESC
+      LIMIT ?
+    ) top ON top.did = i.did`;
   
   const params = [
     did, did, ...timeParams,
