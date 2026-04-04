@@ -38,10 +38,21 @@ export function getRepo(db: Database, did: string): RepoRow | null {
   return db.query('SELECT * FROM repos WHERE did = ?').get(did) as RepoRow | null;
 }
 
-export function getRecordCount(db: Database, did: string): Record<string, number> {
+export function getRecordCount(db: Database, did: string, start?: number, end?: number): Record<string, number> {
+  let where = 'WHERE repo_did = ?';
+  const params: any[] = [did];
+  if (start !== undefined) {
+    where += ' AND created_at >= ?';
+    params.push(start * 1000);
+  }
+  if (end !== undefined) {
+    where += ' AND created_at <= ?';
+    params.push(end * 1000);
+  }
+
   const rows = db.query(
-    'SELECT collection, COUNT(*) as count FROM records WHERE repo_did = ? GROUP BY collection'
-  ).all(did) as { collection: string; count: number }[];
+    `SELECT collection, COUNT(*) as count FROM records ${where} GROUP BY collection`
+  ).all(...params) as { collection: string; count: number }[];
   return Object.fromEntries(rows.map(r => [r.collection, r.count]));
 }
 

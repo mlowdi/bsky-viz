@@ -25,24 +25,24 @@ export function getTopInteractions(
   const sql = `
     SELECT did, collection, count FROM (
       SELECT subject_did as did, 'app.bsky.feed.like' as collection, COUNT(*) as count
-      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.like' AND subject_did IS NOT NULL ${timeFilter}
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.like' AND subject_did IS NOT NULL AND subject_did != ? ${timeFilter}
       GROUP BY subject_did
       UNION ALL
       SELECT subject_did as did, 'app.bsky.feed.repost' as collection, COUNT(*) as count
-      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.repost' AND subject_did IS NOT NULL ${timeFilter}
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.repost' AND subject_did IS NOT NULL AND subject_did != ? ${timeFilter}
       GROUP BY subject_did
       UNION ALL
       SELECT reply_parent_did as did, 'reply' as collection, COUNT(*) as count
-      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND is_reply = 1 AND reply_parent_did IS NOT NULL ${timeFilter}
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND is_reply = 1 AND reply_parent_did IS NOT NULL AND reply_parent_did != ? ${timeFilter}
       GROUP BY reply_parent_did
     )
     ORDER BY count DESC
     LIMIT ?`;
   
   const params = [
-    did, ...timeParams,
-    did, ...timeParams,
-    did, ...timeParams,
+    did, did, ...timeParams,
+    did, did, ...timeParams,
+    did, did, ...timeParams,
     limit
   ];
   return db.query(sql).all(...params) as InteractionPartner[];
@@ -50,15 +50,15 @@ export function getTopInteractions(
 
 // Content ratios: count of posts vs replies vs reposts vs likes
 export function getContentRatios(db: Database, did: string, start?: number, end?: number): RatioData[] {
-  let where = 'WHERE repo_did = ?';
+  let where = "WHERE repo_did = ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
   const params: any[] = [did];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
-    params.push(start);
+    params.push(start * 1000);
   }
   if (end !== undefined) {
     where += ' AND created_at <= ?';
-    params.push(end);
+    params.push(end * 1000);
   }
 
   const sql = `SELECT

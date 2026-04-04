@@ -108,13 +108,26 @@ function renderBreadcrumb() {
   });
 }
 
+function renderSummaryCards(counts: Record<string, number>) {
+  const totalRecords = Object.values(counts).reduce((a: number, b: any) => a + (b as number), 0);
+  summaryCards.innerHTML = [
+    { label: 'Total Records', value: totalRecords },
+    { label: 'Posts', value: counts['app.bsky.feed.post'] || 0 },
+    { label: 'Likes', value: counts['app.bsky.feed.like'] || 0 },
+    { label: 'Reposts', value: counts['app.bsky.feed.repost'] || 0 },
+    { label: 'Follows', value: counts['app.bsky.graph.follow'] || 0 },
+    { label: 'Blocks', value: counts['app.bsky.graph.block'] || 0 },
+  ].map(c => `<div class="card"><div class="value">${c.value.toLocaleString()}</div><div class="label">${c.label}</div></div>`).join('');
+}
+
 async function refreshCharts() {
   if (!currentDid) return;
   status.textContent = `Refreshing analysis for ${currentHandle || currentDid}...`;
   loadBtn.disabled = true;
 
   try {
-    const [heatmap, timeline, ratios, interactions, follows, blocks] = await Promise.all([
+    const [summary, heatmap, timeline, ratios, interactions, follows, blocks] = await Promise.all([
+      api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/heatmap`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/ratios`),
@@ -123,8 +136,11 @@ async function refreshCharts() {
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/blocks`),
     ]);
 
+    renderSummaryCards(summary.counts || {});
+    const profileChanges = timeline.filter((t: any) => t.collection === 'app.bsky.actor.profile').map((t: any) => t.date);
+
     renderHeatmap('heatmap-chart', heatmap);
-    renderTimeline('timeline-chart', timeline);
+    renderTimeline('timeline-chart', timeline, profileChanges);
     renderRatios('ratios-chart', ratios);
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
@@ -156,16 +172,7 @@ async function loadDashboard(did: string) {
     periods = (await api<{ periods: typeof periods }>(`/repos/${encodeURIComponent(did)}/periods`)).periods;
 
     // Render summary cards
-    const counts = summary.counts || {};
-    const totalRecords = Object.values(counts).reduce((a: number, b: any) => a + (b as number), 0);
-    summaryCards.innerHTML = [
-      { label: 'Total Records', value: totalRecords },
-      { label: 'Posts', value: counts['app.bsky.feed.post'] || 0 },
-      { label: 'Likes', value: counts['app.bsky.feed.like'] || 0 },
-      { label: 'Reposts', value: counts['app.bsky.feed.repost'] || 0 },
-      { label: 'Follows', value: counts['app.bsky.graph.follow'] || 0 },
-      { label: 'Blocks', value: counts['app.bsky.graph.block'] || 0 },
-    ].map(c => `<div class="card"><div class="value">${c.value.toLocaleString()}</div><div class="label">${c.label}</div></div>`).join('');
+    renderSummaryCards(summary.counts || {});
 
     // Unhide dashboard BEFORE rendering charts so ECharts can measure container dimensions
     dashboard.classList.remove('hidden');

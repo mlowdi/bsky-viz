@@ -29,9 +29,10 @@ export function apiRoutes(db: Database): Hono {
 
   api.get('/repos/:did/summary', (c) => {
     const did = decodeURIComponent(c.req.param('did'));
+    const { start, end } = getTimeParams(c);
     const repo = getRepo(db, did);
     if (!repo) return c.json({ error: 'Repo not found' }, 404);
-    const counts = getRecordCount(db, did);
+    const counts = getRecordCount(db, did, start, end);
     return c.json({ ...repo, counts });
   });
 

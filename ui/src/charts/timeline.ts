@@ -1,6 +1,6 @@
 import * as echarts from 'echarts';
 
-export function renderTimeline(containerId: string, data: Array<{ date: string; collection: string; count: number }>) {
+export function renderTimeline(containerId: string, data: Array<{ date: string; collection: string; count: number }>, profileChangeDates?: string[]) {
   const el = document.getElementById(containerId)!;
   const existingChart = echarts.getInstanceByDom(el);
   const chart = existingChart || echarts.init(el, 'dark');
@@ -30,6 +30,28 @@ export function renderTimeline(containerId: string, data: Array<{ date: string; 
     areaStyle: { opacity: 0.3 },
     data: dates.map(d => lookup.get(`${d}|${col}`) || 0),
   }));
+
+  if (profileChangeDates && profileChangeDates.length > 0 && series.length > 0) {
+    (series[0] as any).markLine = {
+      silent: true,
+      symbol: 'none',
+      data: profileChangeDates.map(date => ({
+        xAxis: date,
+        label: { 
+          formatter: 'Profile\nChange',
+          position: 'start' as const,
+          fontSize: 10,
+          color: '#ffcc00'
+        },
+        lineStyle: {
+          type: 'dashed' as const,
+          color: '#ffcc00',
+          width: 1.5,
+          opacity: 0.7
+        }
+      }))
+    };
+  }
 
   chart.setOption({
     tooltip: { trigger: 'axis' },

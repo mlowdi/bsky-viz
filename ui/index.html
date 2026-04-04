@@ -66,6 +66,12 @@
       </div>
       <div class="chart-container">
         <h3>Top Interactions</h3>
+        <div id="interactions-switcher">
+          <button class="tab-btn active" data-filter="all">All</button>
+          <button class="tab-btn" data-filter="reply">Replies</button>
+          <button class="tab-btn" data-filter="app.bsky.feed.repost">Reposts</button>
+          <button class="tab-btn" data-filter="app.bsky.feed.like">Likes</button>
+        </div>
         <div class="chart" id="interactions-chart"></div>
       </div>
       <div class="chart-container" style="grid-column: span 2;">

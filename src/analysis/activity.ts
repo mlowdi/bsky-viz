@@ -39,7 +39,7 @@ export function getActivityHeatmap(
 export function getActivityTimeline(
   db: Database, did: string, start?: number, end?: number
 ): TimelinePoint[] {
-  let where = 'WHERE repo_did = ? AND created_at IS NOT NULL';
+  let where = "WHERE repo_did = ? AND created_at IS NOT NULL AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
   const params: any[] = [did];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
