@@ -9,10 +9,10 @@ export function renderHeatmap(containerId: string, data: Array<{ dayOfWeek: numb
     window.addEventListener('resize', () => chart.resize());
   }
 
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
   // ECharts heatmap data format: [xIndex, yIndex, value]
-  const heatData = data.map(d => [d.hourOfDay, d.dayOfWeek, d.count]);
+  const heatData = data.map(d => [d.hourOfDay, (d.dayOfWeek + 6) % 7, d.count]);
   const maxVal = Math.max(...data.map(d => d.count), 1);
 
   chart.setOption({

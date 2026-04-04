@@ -47,8 +47,43 @@
   </div>
   <div class="status" id="status"></div>
   <div id="dashboard" class="hidden">
-    <div id="date-range" class="date-range hidden">
-      <span class="breadcrumb" id="date-breadcrumb"></span>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 20px;">
+      <div id="date-range" class="date-range hidden">
+        <span class="breadcrumb" id="date-breadcrumb"></span>
+      </div>
+      <div id="timezone-container" class="hidden" style="display: flex; align-items: center; gap: 8px;">
+        <span id="timezone-label" style="font-size: 0.9rem; color: #888;"></span>
+        <select id="timezone-select" style="padding:0.25rem;background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;font-size:0.9rem;">
+          <option value="local">Local</option>
+          <option value="-12">UTC-12</option>
+          <option value="-11">UTC-11</option>
+          <option value="-10">UTC-10</option>
+          <option value="-9">UTC-9</option>
+          <option value="-8">UTC-8</option>
+          <option value="-7">UTC-7</option>
+          <option value="-6">UTC-6</option>
+          <option value="-5">UTC-5</option>
+          <option value="-4">UTC-4</option>
+          <option value="-3">UTC-3</option>
+          <option value="-2">UTC-2</option>
+          <option value="-1">UTC-1</option>
+          <option value="0">UTC</option>
+          <option value="1">UTC+1</option>
+          <option value="2">UTC+2</option>
+          <option value="3">UTC+3</option>
+          <option value="4">UTC+4</option>
+          <option value="5">UTC+5</option>
+          <option value="6">UTC+6</option>
+          <option value="7">UTC+7</option>
+          <option value="8">UTC+8</option>
+          <option value="9">UTC+9</option>
+          <option value="10">UTC+10</option>
+          <option value="11">UTC+11</option>
+          <option value="12">UTC+12</option>
+          <option value="13">UTC+13</option>
+          <option value="14">UTC+14</option>
+        </select>
+      </div>
     </div>
     <div class="summary-cards" id="summary-cards"></div>
     <div class="charts">

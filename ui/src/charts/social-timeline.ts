@@ -1,4 +1,5 @@
 import * as echarts from 'echarts';
+import { getColor } from '../colors';
 
 export function renderSocial(
   containerId: string,
@@ -36,8 +37,8 @@ export function renderSocial(
     xAxis: { type: 'category', data: allDates },
     yAxis: { type: 'value' },
     series: [
-      { name: 'Follows (cumulative)', type: 'line', smooth: true, symbol: 'none', data: fData, lineStyle: { color: '#51cf66' }, itemStyle: { color: '#51cf66' } },
-      { name: 'Blocks (cumulative)', type: 'line', smooth: true, symbol: 'none', data: bData, lineStyle: { color: '#ff6b6b' }, itemStyle: { color: '#ff6b6b' } },
+      { name: 'Follows (cumulative)', type: 'line', smooth: true, symbol: 'none', data: fData, lineStyle: { color: getColor('app.bsky.graph.follow') }, itemStyle: { color: getColor('app.bsky.graph.follow') } },
+      { name: 'Blocks (cumulative)', type: 'line', smooth: true, symbol: 'none', data: bData, lineStyle: { color: getColor('app.bsky.graph.block') }, itemStyle: { color: getColor('app.bsky.graph.block') } },
     ],
   });
 }

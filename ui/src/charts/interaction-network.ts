@@ -1,21 +1,10 @@
 import * as echarts from 'echarts';
+import { getColor, getLabel as getCollectionLabel } from '../colors';
 
 let chartInstance: echarts.ECharts | null = null;
 let rawData: Array<{ did: string; collection: string; count: number; handle?: string | null }> = [];
 let currentFilter: string = 'all';
 let switcherInitialized = false;
-
-const colors: Record<string, string> = {
-  'app.bsky.feed.like': '#ff6b6b',
-  'app.bsky.feed.repost': '#51cf66',
-  'reply': '#339af0'
-};
-
-const labels: Record<string, string> = {
-  'app.bsky.feed.like': 'Likes',
-  'app.bsky.feed.repost': 'Reposts',
-  'reply': 'Replies'
-};
 
 export function renderInteractions(containerId: string, data: Array<{ did: string; collection: string; count: number; handle?: string | null }>) {
   const el = document.getElementById(containerId)!;
@@ -88,10 +77,10 @@ function renderStacked() {
   const collections = ['app.bsky.feed.like', 'app.bsky.feed.repost', 'reply'];
   
   const series = collections.map(col => ({
-    name: labels[col],
+    name: getCollectionLabel(col),
     type: 'bar',
     stack: 'total',
-    itemStyle: { color: colors[col] },
+    itemStyle: { color: getColor(col) },
     data: top.map(d => d.counts[col])
   }));
 
@@ -117,8 +106,8 @@ function renderFiltered() {
   const yAxisData = top.map(d => getLabel(d));
   const seriesData = top.map(d => ({
     value: d.count,
-    itemStyle: { color: colors[d.collection] || '#0085ff' },
-    name: labels[d.collection] || d.collection
+    itemStyle: { color: getColor(d.collection) },
+    name: getCollectionLabel(d.collection)
   }));
 
   chartInstance.setOption({

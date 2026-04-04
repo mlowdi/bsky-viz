@@ -3,6 +3,7 @@ import { renderTimeline } from './charts/timeline.js';
 import { renderRatios } from './charts/ratios.js';
 import { renderInteractions } from './charts/interaction-network.js';
 import { renderSocial } from './charts/social-timeline.js';
+import { shiftHeatmapData, currentOffsetHours, setOffsetHours, getTimezoneLabel } from './timezone.js';
 
 const didInput = document.getElementById('did-input') as HTMLInputElement;
 const loadBtn = document.getElementById('load-btn') as HTMLButtonElement;
@@ -11,6 +12,9 @@ const status = document.getElementById('status') as HTMLDivElement;
 const dashboard = document.getElementById('dashboard') as HTMLDivElement;
 const summaryCards = document.getElementById('summary-cards') as HTMLDivElement;
 const dateRangeContainer = document.getElementById('date-range') as HTMLDivElement;
+const timezoneSelect = document.getElementById('timezone-select') as HTMLSelectElement;
+const timezoneLabel = document.getElementById('timezone-label') as HTMLSpanElement;
+const timezoneContainer = document.getElementById('timezone-container') as HTMLDivElement;
 
 let currentRange: { start?: number; end?: number; label: string } = { label: 'All Time' };
 let currentDid: string = '';
@@ -137,10 +141,9 @@ async function refreshCharts() {
     ]);
 
     renderSummaryCards(summary.counts || {});
-    const profileChanges = timeline.filter((t: any) => t.collection === 'app.bsky.actor.profile').map((t: any) => t.date);
 
-    renderHeatmap('heatmap-chart', heatmap);
-    renderTimeline('timeline-chart', timeline, profileChanges);
+    renderHeatmap('heatmap-chart', shiftHeatmapData(heatmap, currentOffsetHours));
+    renderTimeline('timeline-chart', timeline);
     renderRatios('ratios-chart', ratios);
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
@@ -177,6 +180,7 @@ async function loadDashboard(did: string) {
     // Unhide dashboard BEFORE rendering charts so ECharts can measure container dimensions
     dashboard.classList.remove('hidden');
     dateRangeContainer.classList.remove('hidden');
+    timezoneContainer.classList.remove('hidden');
 
     await refreshCharts();
   } catch (err: any) {
@@ -200,5 +204,16 @@ repoSelect.addEventListener('change', () => {
     loadDashboard(repoSelect.value);
   }
 });
+
+timezoneSelect.addEventListener('change', () => {
+  if (timezoneSelect.value === 'local') {
+    setOffsetHours(Math.round(-new Date().getTimezoneOffset() / 60));
+  } else {
+    setOffsetHours(parseInt(timezoneSelect.value, 10));
+  }
+  timezoneLabel.textContent = getTimezoneLabel();
+  refreshCharts();
+});
+timezoneLabel.textContent = getTimezoneLabel();
 
 loadRepoList();
