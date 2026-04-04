@@ -2,7 +2,13 @@ import * as echarts from 'echarts';
 
 export function renderTimeline(containerId: string, data: Array<{ date: string; collection: string; count: number }>) {
   const el = document.getElementById(containerId)!;
-  const chart = echarts.init(el, 'dark');
+  const existingChart = echarts.getInstanceByDom(el);
+  const chart = existingChart || echarts.init(el, 'dark');
+
+  if (!existingChart) {
+    window.addEventListener('resize', () => chart.resize());
+  }
+
   // Group by collection, create a line series per collection
   const collections = [...new Set(data.map(d => d.collection))];
   const dates = [...new Set(data.map(d => d.date))].sort();
@@ -33,5 +39,4 @@ export function renderTimeline(containerId: string, data: Array<{ date: string; 
     yAxis: { type: 'value' },
     series,
   });
-  window.addEventListener('resize', () => chart.resize());
 }
