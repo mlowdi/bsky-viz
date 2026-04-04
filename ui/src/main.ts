@@ -3,6 +3,7 @@ import { renderTimeline } from './charts/timeline.js';
 import { renderRatios } from './charts/ratios.js';
 import { renderInteractions } from './charts/interaction-network.js';
 import { renderSocial } from './charts/social-timeline.js';
+import { renderThemeRiver } from './charts/themeriver.js';
 import { shiftHeatmapData, currentOffsetHours, setOffsetHours, getTimezoneLabel } from './timezone.js';
 
 const didInput = document.getElementById('did-input') as HTMLInputElement;
@@ -130,7 +131,7 @@ async function refreshCharts() {
   loadBtn.disabled = true;
 
   try {
-    const [summary, heatmap, timeline, ratios, interactions, follows, blocks] = await Promise.all([
+    const [summary, heatmap, timeline, ratios, interactions, follows, blocks, clusters] = await Promise.all([
       api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/heatmap`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
@@ -138,9 +139,18 @@ async function refreshCharts() {
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/interactions/top`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/follows`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/blocks`),
+      api<any>(`/repos/${encodeURIComponent(currentDid)}/clusters?k=10&bin=month`),
     ]);
 
     renderSummaryCards(summary.counts || {});
+
+    const themeRiverContainer = document.getElementById('themeriver-container');
+    if (clusters && clusters.clusters && clusters.clusters.length > 0 && clusters.series && clusters.series.length > 0) {
+      themeRiverContainer?.removeAttribute('hidden');
+      renderThemeRiver('themeriver-chart', clusters);
+    } else {
+      themeRiverContainer?.setAttribute('hidden', '');
+    }
 
     renderHeatmap('heatmap-chart', shiftHeatmapData(heatmap, currentOffsetHours));
     renderTimeline('timeline-chart', timeline);
