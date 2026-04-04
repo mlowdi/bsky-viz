@@ -92,7 +92,8 @@ export function apiRoutes(db: Database): Hono {
     const did = decodeURIComponent(c.req.param('did'));
     const k = parseInt(c.req.query('k') || '10');
     const bin = c.req.query('bin') || 'month';
-    return c.json(getClusterAnalysis(db, did, k, bin));
+    const { start, end } = getTimeParams(c);
+    return c.json(getClusterAnalysis(db, did, k, bin, start, end));
   });
 
   return api;

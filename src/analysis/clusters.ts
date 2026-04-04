@@ -110,16 +110,19 @@ export function kMeans(vectors: Float32Array[], k: number, maxIterations: number
   return { assignments, centroids };
 }
 
-export function getClusterAnalysis(db: Database, did: string, k: number = 10, timeBin: string = 'month'): ClusterAnalysis {
+export function getClusterAnalysis(db: Database, did: string, k: number = 10, timeBin: string = 'month', start?: number, end?: number): ClusterAnalysis {
+  let where = 'WHERE repo_did = ? AND collection = \'app.bsky.feed.post\' AND embedding IS NOT NULL';
+  const params: any[] = [did];
+  if (start !== undefined) { where += ' AND created_at >= ?'; params.push(start * 1000); }
+  if (end !== undefined) { where += ' AND created_at <= ?'; params.push(end * 1000); }
+
   const sql = `
     SELECT id, created_at, raw_json, embedding 
     FROM records 
-    WHERE repo_did = ? 
-      AND collection = 'app.bsky.feed.post' 
-      AND embedding IS NOT NULL 
+    ${where}
     ORDER BY created_at
   `;
-  const rows = db.query(sql).all(did) as { id: number, created_at: number, raw_json: string, embedding: Uint8Array }[];
+  const rows = db.query(sql).all(...params) as { id: number, created_at: number, raw_json: string, embedding: Uint8Array }[];
 
   if (rows.length === 0) {
     return { clusters: [], series: [] };
@@ -165,11 +168,9 @@ export function getClusterAnalysis(db: Database, did: string, k: number = 10, ti
   const dateRows = db.query(`
     SELECT id, ${dateStrSql} as date 
     FROM records 
-    WHERE repo_did = ? 
-      AND collection = 'app.bsky.feed.post' 
-      AND embedding IS NOT NULL 
+    ${where}
     ORDER BY created_at
-  `).all(did) as { id: number, date: string }[];
+  `).all(...params) as { id: number, date: string }[];
 
   const series: Array<{ date: string, clusterId: number, count: number }> = [];
   const counts = new Map<string, Map<number, number>>();
