@@ -1,0 +1,47 @@
+import { Database } from 'bun:sqlite';
+import type { InteractionPartner, RatioData } from '../types.js';
+
+// Top interaction partners: for likes, reposts, and replies
+// Group by subject_did (for likes/reposts) or reply_parent_did (for posts that are replies)
+// Return top N per interaction type
+export function getTopInteractions(
+  db: Database, did: string, limit: number = 20
+): InteractionPartner[] {
+  // Union of:
+  // 1. Likes: subject_did from collection='app.bsky.feed.like'
+  // 2. Reposts: subject_did from collection='app.bsky.feed.repost'
+  // 3. Replies: reply_parent_did from collection='app.bsky.feed.post' WHERE is_reply=1
+  const sql = `
+    SELECT did, collection, count FROM (
+      SELECT subject_did as did, 'app.bsky.feed.like' as collection, COUNT(*) as count
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.like' AND subject_did IS NOT NULL
+      GROUP BY subject_did
+      UNION ALL
+      SELECT subject_did as did, 'app.bsky.feed.repost' as collection, COUNT(*) as count
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.repost' AND subject_did IS NOT NULL
+      GROUP BY subject_did
+      UNION ALL
+      SELECT reply_parent_did as did, 'reply' as collection, COUNT(*) as count
+      FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND is_reply = 1 AND reply_parent_did IS NOT NULL
+      GROUP BY reply_parent_did
+    )
+    ORDER BY count DESC
+    LIMIT ?`;
+  return db.query(sql).all(did, did, did, limit) as InteractionPartner[];
+}
+
+// Content ratios: count of posts vs replies vs reposts vs likes
+export function getContentRatios(db: Database, did: string): RatioData[] {
+  const sql = `SELECT
+    CASE
+      WHEN collection = 'app.bsky.feed.post' AND is_reply = 1 THEN 'reply'
+      WHEN collection = 'app.bsky.feed.post' AND (is_reply = 0 OR is_reply IS NULL) THEN 'original_post'
+      ELSE collection
+    END as collection,
+    COUNT(*) as count
+    FROM records
+    WHERE repo_did = ?
+    GROUP BY 1
+    ORDER BY count DESC`;
+  return db.query(sql).all(did) as RatioData[];
+}
