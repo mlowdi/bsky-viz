@@ -12,12 +12,20 @@ export function renderThemeRiver(containerId: string, data: { clusters: Array<{ 
   const clusterMap = new Map<number, string>();
   data.clusters.forEach(c => clusterMap.set(c.id, c.label));
 
-  // Transform data into ECharts format: [date, value, themeName]
-  const transformedData = data.series.map(s => [
-    s.date,
-    s.count,
-    clusterMap.get(s.clusterId) || `Cluster ${s.clusterId}`
-  ]);
+  // Normalize: convert absolute counts to percentages per time bin
+  const dateTotals = new Map<string, number>();
+  for (const s of data.series) {
+    dateTotals.set(s.date, (dateTotals.get(s.date) || 0) + s.count);
+  }
+
+  const normalizedData = data.series.map(s => {
+    const total = dateTotals.get(s.date) || 1;
+    return [
+      s.date,
+      Math.round((s.count / total) * 100 * 10) / 10,
+      clusterMap.get(s.clusterId) || `Cluster ${s.clusterId}`
+    ];
+  });
 
   const PALETTE = [
     '#339af0', '#845ef7', '#ff6b6b', '#51cf66', '#22b8cf', '#ff922b',
@@ -34,7 +42,7 @@ export function renderThemeRiver(containerId: string, data: { clusters: Array<{ 
         params.forEach((p: any) => {
           res += `<div style="display: flex; justify-content: space-between; gap: 10px;">
             <span>${p.marker} ${p.value[2]}</span>
-            <span style="font-weight: bold;">${p.value[1]}</span>
+            <span style="font-weight: bold;">${p.value[1]}%</span>
           </div>`;
         });
         return res;
@@ -64,7 +72,7 @@ export function renderThemeRiver(containerId: string, data: { clusters: Array<{ 
             shadowColor: 'rgba(0, 0, 0, 0.8)'
           }
         },
-        data: transformedData,
+        data: normalizedData,
         label: { show: false },
         color: PALETTE
       }
