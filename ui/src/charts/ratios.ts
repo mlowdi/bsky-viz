@@ -2,7 +2,13 @@ import * as echarts from 'echarts';
 
 export function renderRatios(containerId: string, data: Array<{ collection: string; count: number }>) {
   const el = document.getElementById(containerId)!;
-  const chart = echarts.init(el, 'dark');
+  const existingChart = echarts.getInstanceByDom(el);
+  const chart = existingChart || echarts.init(el, 'dark');
+
+  if (!existingChart) {
+    window.addEventListener('resize', () => chart.resize());
+  }
+
   const labels: Record<string, string> = {
     'original_post': 'Original Posts', 'reply': 'Replies',
     'app.bsky.feed.repost': 'Reposts', 'app.bsky.feed.like': 'Likes',
@@ -20,5 +26,4 @@ export function renderRatios(containerId: string, data: Array<{ collection: stri
       data: data.map(d => ({ name: labels[d.collection] || d.collection, value: d.count })),
     }],
   });
-  window.addEventListener('resize', () => chart.resize());
 }

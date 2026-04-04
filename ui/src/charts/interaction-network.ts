@@ -2,7 +2,13 @@ import * as echarts from 'echarts';
 
 export function renderInteractions(containerId: string, data: Array<{ did: string; collection: string; count: number }>) {
   const el = document.getElementById(containerId)!;
-  const chart = echarts.init(el, 'dark');
+  const existingChart = echarts.getInstanceByDom(el);
+  const chart = existingChart || echarts.init(el, 'dark');
+
+  if (!existingChart) {
+    window.addEventListener('resize', () => chart.resize());
+  }
+
   const labels: Record<string, string> = { 'app.bsky.feed.like': 'Liked', 'app.bsky.feed.repost': 'Reposted', 'reply': 'Replied to' };
 
   // Take top 15 by count, show as horizontal bar chart
@@ -25,5 +31,4 @@ export function renderInteractions(containerId: string, data: Array<{ did: strin
       label: { show: true, position: 'right', fontSize: 11 },
     }],
   });
-  window.addEventListener('resize', () => chart.resize());
 }

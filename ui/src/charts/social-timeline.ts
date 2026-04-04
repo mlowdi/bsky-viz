@@ -6,7 +6,12 @@ export function renderSocial(
   blocks: Array<{ created_at: number; subject_did: string }>
 ) {
   const el = document.getElementById(containerId)!;
-  const chart = echarts.init(el, 'dark');
+  const existingChart = echarts.getInstanceByDom(el);
+  const chart = existingChart || echarts.init(el, 'dark');
+
+  if (!existingChart) {
+    window.addEventListener('resize', () => chart.resize());
+  }
 
   // Cumulative follow/block count over time
   const followDates = follows.map(f => new Date(f.created_at).toISOString().slice(0, 10));
@@ -35,5 +40,4 @@ export function renderSocial(
       { name: 'Blocks (cumulative)', type: 'line', smooth: true, symbol: 'none', data: bData, lineStyle: { color: '#ff6b6b' }, itemStyle: { color: '#ff6b6b' } },
     ],
   });
-  window.addEventListener('resize', () => chart.resize());
 }

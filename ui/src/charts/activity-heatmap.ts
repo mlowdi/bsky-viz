@@ -2,7 +2,13 @@ import * as echarts from 'echarts';
 
 export function renderHeatmap(containerId: string, data: Array<{ dayOfWeek: number; hourOfDay: number; count: number }>) {
   const el = document.getElementById(containerId)!;
-  const chart = echarts.init(el, 'dark');
+  const existingChart = echarts.getInstanceByDom(el);
+  const chart = existingChart || echarts.init(el, 'dark');
+
+  if (!existingChart) {
+    window.addEventListener('resize', () => chart.resize());
+  }
+
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
   // ECharts heatmap data format: [xIndex, yIndex, value]
@@ -17,5 +23,4 @@ export function renderHeatmap(containerId: string, data: Array<{ dayOfWeek: numb
     visualMap: { min: 0, max: maxVal, calculable: true, orient: 'horizontal', left: 'center', bottom: 0, inRange: { color: ['#0a0a2e', '#003366', '#0066cc', '#0085ff', '#33aaff'] } },
     series: [{ type: 'heatmap', data: heatData, label: { show: false }, emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } } }]
   });
-  window.addEventListener('resize', () => chart.resize());
 }
