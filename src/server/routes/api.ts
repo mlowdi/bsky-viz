@@ -3,6 +3,7 @@ import { Database } from 'bun:sqlite';
 import { getActivityHeatmap, getActivityTimeline, getAvailablePeriods } from '../../analysis/activity.js';
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
+import { getClusterAnalysis } from '../../analysis/clusters.js';
 import { getRepos, getRepo, getRecordCount } from '../../db/queries.js';
 import { resolveHandles } from '../../resolve.js';
 
@@ -85,6 +86,13 @@ export function apiRoutes(db: Database): Hono {
     const did = decodeURIComponent(c.req.param('did'));
     const { start, end } = getTimeParams(c);
     return c.json(getBlockTimeline(db, did, start, end));
+  });
+
+  api.get('/repos/:did/clusters', (c) => {
+    const did = decodeURIComponent(c.req.param('did'));
+    const k = parseInt(c.req.query('k') || '10');
+    const bin = c.req.query('bin') || 'month';
+    return c.json(getClusterAnalysis(db, did, k, bin));
   });
 
   return api;

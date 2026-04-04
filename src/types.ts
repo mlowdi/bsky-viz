@@ -65,3 +65,8 @@ export interface SocialEvent {
   collection: string;
   subject_did: string;
 }
+
+export interface ClusterAnalysis {
+  clusters: Array<{ id: number; label: string }>;
+  series: Array<{ date: string; clusterId: number; count: number }>;
+}
