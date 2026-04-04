@@ -1,0 +1,28 @@
+# ExoMonad - track config and source, ignore runtime artifacts
+.exo/*
+!.exo/config.toml
+!.exo/roles/
+!.exo/lib/
+!.exo/rules/
+
+# Claude / Gemini tooling
+.claude/
+.gemini/
+
+# MCP config (may contain secrets)
+.mcp.json
+
+# Bun
+node_modules/
+bun.lockb
+
+# Build output
+dist/
+.vite/
+
+# Database files
+*.sqlite
+*.db
+
+# OS
+.DS_Store
