@@ -16,7 +16,17 @@ export function renderHeatmap(containerId: string, data: Array<{ dayOfWeek: numb
   const maxVal = Math.max(...data.map(d => d.count), 1);
 
   chart.setOption({
-    tooltip: { position: 'top', formatter: (p: any) => `${days[p.value[1]]} ${hours[p.value[0]]}: ${p.value[2]} records` },
+    tooltip: {
+      position: 'top',
+      formatter: (p: any) => {
+        if (!p || !p.value) return '';
+        const day = days[p.value[1]];
+        const hour = hours[p.value[0]];
+        const count = p.value[2];
+        if (!count) return `${day} ${hour}: No activity`;
+        return `${day} ${hour}: ${count} records`;
+      }
+    },
     grid: { top: 10, bottom: 40, left: 60, right: 20 },
     xAxis: { type: 'category', data: hours, splitArea: { show: true } },
     yAxis: { type: 'category', data: days, splitArea: { show: true } },

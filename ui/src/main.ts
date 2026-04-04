@@ -59,6 +59,9 @@ async function loadDashboard(did: string) {
       { label: 'Blocks', value: counts['app.bsky.graph.block'] || 0 },
     ].map(c => `<div class="card"><div class="value">${c.value.toLocaleString()}</div><div class="label">${c.label}</div></div>`).join('');
 
+    // Unhide dashboard BEFORE rendering charts so ECharts can measure container dimensions
+    dashboard.classList.remove('hidden');
+
     // Render charts
     renderHeatmap('heatmap-chart', heatmap);
     renderTimeline('timeline-chart', timeline);
@@ -66,7 +69,6 @@ async function loadDashboard(did: string) {
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
 
-    dashboard.classList.remove('hidden');
     status.textContent = `Showing analysis for ${summary.handle || did}`;
   } catch (err: any) {
     status.textContent = `Error: ${err.message}`;

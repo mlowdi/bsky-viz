@@ -1,6 +1,6 @@
 import * as echarts from 'echarts';
 
-export function renderInteractions(containerId: string, data: Array<{ did: string; collection: string; count: number }>) {
+export function renderInteractions(containerId: string, data: Array<{ did: string; collection: string; count: number; handle?: string | null }>) {
   const el = document.getElementById(containerId)!;
   const existingChart = echarts.getInstanceByDom(el);
   const chart = existingChart || echarts.init(el, 'dark');
@@ -13,7 +13,7 @@ export function renderInteractions(containerId: string, data: Array<{ did: strin
 
   // Take top 15 by count, show as horizontal bar chart
   const top = data.slice(0, 15);
-  const dids = top.map(d => d.did.slice(0, 20) + '...');
+  const dids = top.map(d => d.handle ? `@${d.handle}` : d.did.slice(0, 20) + '...');
   const colors: Record<string, string> = { 'app.bsky.feed.like': '#ff6b6b', 'app.bsky.feed.repost': '#51cf66', 'reply': '#339af0' };
 
   chart.setOption({
