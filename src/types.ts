@@ -83,3 +83,10 @@ export interface ClusterAnalysis {
   series: Array<{ date: string; clusterId: number; count: number }>;
   posts: ClusterPost[];
 }
+
+export interface SleepWindow {
+  date: string;
+  gapStartHour: number;
+  gapEndHour: number;
+  gapMinutes: number;
+}

@@ -4,6 +4,7 @@ import { renderTypicalDay } from './charts/typical-day.js';
 import { renderRatios } from './charts/ratios.js';
 import { renderInteractions } from './charts/interaction-network.js';
 import { renderSocial } from './charts/social-timeline.js';
+import { renderSleepPattern } from './charts/sleep-pattern.js';
 import { renderThemeRiver, setThemeRiverMode } from './charts/themeriver.js';
 import { shiftHeatmapData, currentOffsetHours, setOffsetHours, getTimezoneLabel } from './timezone.js';
 
@@ -214,7 +215,7 @@ async function refreshCharts() {
 
   try {
     const heatmapPath = `/repos/${encodeURIComponent(currentDid)}/activity/heatmap${currentHeatmapCollection ? `?collection=${currentHeatmapCollection}` : ''}`;
-    const [summary, heatmap, timeline, typicalDay, ratios, interactions, follows, blocks, clusters, outliers] = await Promise.all([
+    const [summary, heatmap, timeline, typicalDay, ratios, interactions, follows, blocks, clusters, outliers, sleep] = await Promise.all([
       api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
       api<any[]>(heatmapPath),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
@@ -225,6 +226,7 @@ async function refreshCharts() {
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/blocks`),
       api<any>(`/repos/${encodeURIComponent(currentDid)}/clusters?k=10&bin=month`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/outliers`),
+      api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/sleep`),
     ]);
 
     renderSummaryCards(summary.counts || {});
@@ -276,6 +278,7 @@ async function refreshCharts() {
     renderRatios('ratios-chart', ratios);
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
+    renderSleepPattern('sleep-chart', sleep);
 
     renderBreadcrumb();
 

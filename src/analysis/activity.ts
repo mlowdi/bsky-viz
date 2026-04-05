@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import type { HeatmapCell, TimelinePoint, TypicalDayPoint } from '../types.js';
+import type { HeatmapCell, TimelinePoint, TypicalDayPoint, SleepWindow } from '../types.js';
 import { BLUESKY_EPOCH } from '../constants.js';
 
 // Activity heatmap: for a given DID, count records by (dayOfWeek, hourOfDay)
@@ -103,4 +103,84 @@ export function getAvailablePeriods(db: Database, did: string) {
   GROUP BY year, month
   ORDER BY year, month`;
   return db.query(sql).all(did, BLUESKY_EPOCH * 1000, Date.now());
+}
+
+export function getSleepPattern(
+  db: Database, did: string, start?: number, end?: number
+): SleepWindow[] {
+  let where = "WHERE repo_did = ? AND created_at >= ? AND created_at <= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000, Date.now()];
+  if (start !== undefined) {
+    where += ' AND created_at >= ?';
+    params.push(start * 1000);
+  }
+  if (end !== undefined) {
+    where += ' AND created_at <= ?';
+    params.push(end * 1000);
+  }
+
+  const sql = `SELECT created_at FROM records ${where} ORDER BY created_at ASC`;
+  const rows = db.query(sql).all(...params) as { created_at: number }[];
+
+  if (rows.length === 0) return [];
+
+  // Group events by calendar date (UTC)
+  const days: Map<string, number[]> = new Map();
+  for (const row of rows) {
+    const dateStr = new Date(row.created_at).toISOString().split('T')[0];
+    if (!days.has(dateStr)) days.set(dateStr, []);
+    days.get(dateStr)!.push(row.created_at);
+  }
+
+  const sortedDates = Array.from(days.keys()).sort();
+  const sleepWindows: SleepWindow[] = [];
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    const date = sortedDates[i];
+    const events = days.get(date)!;
+    if (events.length < 3) continue;
+
+    let longestGap = 0;
+    let gapStart = 0;
+    let gapEnd = 0;
+
+    // Check gaps within the day
+    for (let j = 0; j < events.length - 1; j++) {
+      const gap = events[j + 1] - events[j];
+      if (gap > longestGap) {
+        longestGap = gap;
+        gapStart = events[j];
+        gapEnd = events[j + 1];
+      }
+    }
+
+    // Check overnight gap to next day's first event
+    if (i < sortedDates.length - 1) {
+      const nextDateEvents = days.get(sortedDates[i + 1])!;
+      const lastEventToday = events[events.length - 1];
+      const firstEventTomorrow = nextDateEvents[0];
+      const overnightGap = firstEventTomorrow - lastEventToday;
+      if (overnightGap > longestGap) {
+        longestGap = overnightGap;
+        gapStart = lastEventToday;
+        gapEnd = firstEventTomorrow;
+      }
+    }
+
+    if (longestGap > 0) {
+      const startD = new Date(gapStart);
+      const endD = new Date(gapEnd);
+      const gapStartHour = startD.getUTCHours() + startD.getUTCMinutes() / 60;
+      const gapEndHour = endD.getUTCHours() + endD.getUTCMinutes() / 60;
+
+      sleepWindows.push({
+        date,
+        gapStartHour,
+        gapEndHour,
+        gapMinutes: Math.round(longestGap / 60000),
+      });
+    }
+  }
+
+  return sleepWindows;
 }
