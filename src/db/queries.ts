@@ -101,9 +101,9 @@ export function getOutlierRecords(db: Database, did: string): { text: string; cr
   const sql = `
     SELECT raw_json, created_at, collection
     FROM records
-    WHERE repo_did = ? AND created_at < ? AND raw_json IS NOT NULL
+    WHERE repo_did = ? AND (created_at < ? OR created_at > ?) AND raw_json IS NOT NULL
   `;
-  const rows = db.query(sql).all(did, BLUESKY_EPOCH_MS) as { raw_json: string; created_at: number; collection: string }[];
+  const rows = db.query(sql).all(did, BLUESKY_EPOCH_MS, Date.now()) as { raw_json: string; created_at: number; collection: string }[];
   
   const outliers: { text: string; createdAt: number; collection: string }[] = [];
   for (const row of rows) {

@@ -112,8 +112,8 @@ export function kMeans(vectors: Float32Array[], k: number, maxIterations: number
 }
 
 export function getClusterAnalysis(db: Database, did: string, k: number = 10, timeBin: string = 'month', start?: number, end?: number): ClusterAnalysis {
-  let where = 'WHERE repo_did = ? AND collection = \'app.bsky.feed.post\' AND created_at >= ? AND embedding IS NOT NULL';
-  const params: any[] = [did, BLUESKY_EPOCH * 1000];
+  let where = 'WHERE repo_did = ? AND collection = \'app.bsky.feed.post\' AND created_at >= ? AND created_at <= ? AND embedding IS NOT NULL';
+  const params: any[] = [did, BLUESKY_EPOCH * 1000, Date.now()];
   if (start !== undefined) { where += ' AND created_at >= ?'; params.push(start * 1000); }
   if (end !== undefined) { where += ' AND created_at <= ?'; params.push(end * 1000); }
 
