@@ -4,7 +4,7 @@ import { getActivityHeatmap, getActivityTimeline, getAvailablePeriods } from '..
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
 import { getClusterAnalysis } from '../../analysis/clusters.js';
-import { getRepos, getRepo, getRecordCount } from '../../db/queries.js';
+import { getRepos, getRepo, getRecordCount, getEmbeddingStatus } from '../../db/queries.js';
 import { resolveHandles } from '../../resolve.js';
 
 function getTimeParams(c: any) {
@@ -34,7 +34,8 @@ export function apiRoutes(db: Database): Hono {
     const repo = getRepo(db, did);
     if (!repo) return c.json({ error: 'Repo not found' }, 404);
     const counts = getRecordCount(db, did, start, end);
-    return c.json({ ...repo, counts });
+    const embeddings = getEmbeddingStatus(db, did);
+    return c.json({ ...repo, counts, embeddings });
   });
 
   api.get('/repos/:did/periods', (c) => {

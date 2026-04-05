@@ -79,6 +79,17 @@ export function updateEmbedding(db: Database, id: number, embedding: Buffer): vo
   db.run('UPDATE records SET embedding = ? WHERE id = ?', [embedding, id]);
 }
 
+export function getEmbeddingStatus(db: Database, did: string): { totalPosts: number; embeddedPosts: number } {
+  const row = db.query(
+    `SELECT
+       COUNT(*) as totalPosts,
+       COUNT(embedding) as embeddedPosts
+     FROM records
+     WHERE repo_did = ? AND collection = 'app.bsky.feed.post'`
+  ).get(did) as { totalPosts: number; embeddedPosts: number };
+  return row;
+}
+
 export function getPostsWithoutEmbeddings(db: Database, did: string): { id: number; raw_json: string }[] {
   return db.query(
     "SELECT id, raw_json FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND embedding IS NULL AND raw_json IS NOT NULL"

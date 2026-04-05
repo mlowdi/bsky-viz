@@ -16,6 +16,7 @@ const dateRangeContainer = document.getElementById('date-range') as HTMLDivEleme
 const timezoneSelect = document.getElementById('timezone-select') as HTMLSelectElement;
 const timezoneLabel = document.getElementById('timezone-label') as HTMLSpanElement;
 const timezoneContainer = document.getElementById('timezone-container') as HTMLDivElement;
+const embeddingStatus = document.getElementById('embedding-status') as HTMLDivElement;
 
 let currentRange: { start?: number; end?: number; label: string } = { label: 'All Time' };
 let currentDid: string = '';
@@ -145,11 +146,30 @@ async function refreshCharts() {
     renderSummaryCards(summary.counts || {});
 
     const themeRiverContainer = document.getElementById('themeriver-container');
-    if (clusters && clusters.clusters && clusters.clusters.length > 0 && clusters.series && clusters.series.length > 0) {
-      themeRiverContainer?.removeAttribute('hidden');
-      renderThemeRiver('themeriver-chart', clusters);
-    } else {
+    const embeddings = summary.embeddings as { totalPosts: number; embeddedPosts: number } | undefined;
+    const displayName = currentHandle || currentDid;
+
+    if (embeddings && embeddings.embeddedPosts === 0) {
       themeRiverContainer?.setAttribute('hidden', '');
+      embeddingStatus.textContent = `No embeddings available for this account. Run: bun run cli.ts embed ${displayName} to enable topic clustering.`;
+      embeddingStatus.classList.remove('hidden');
+    } else if (embeddings && embeddings.embeddedPosts > 0 && embeddings.embeddedPosts < embeddings.totalPosts) {
+      if (clusters && clusters.clusters && clusters.clusters.length > 0 && clusters.series && clusters.series.length > 0) {
+        themeRiverContainer?.removeAttribute('hidden');
+        renderThemeRiver('themeriver-chart', clusters);
+      } else {
+        themeRiverContainer?.setAttribute('hidden', '');
+      }
+      embeddingStatus.textContent = `Embeddings: ${embeddings.embeddedPosts.toLocaleString()} of ${embeddings.totalPosts.toLocaleString()} posts embedded. Run: bun run cli.ts embed ${displayName} to complete.`;
+      embeddingStatus.classList.remove('hidden');
+    } else {
+      if (clusters && clusters.clusters && clusters.clusters.length > 0 && clusters.series && clusters.series.length > 0) {
+        themeRiverContainer?.removeAttribute('hidden');
+        renderThemeRiver('themeriver-chart', clusters);
+      } else {
+        themeRiverContainer?.setAttribute('hidden', '');
+      }
+      embeddingStatus.classList.add('hidden');
     }
 
     renderHeatmap('heatmap-chart', shiftHeatmapData(heatmap, currentOffsetHours));
