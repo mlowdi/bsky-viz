@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import type { HeatmapCell, TimelinePoint } from '../types.js';
+import { BLUESKY_EPOCH } from '../constants.js';
 
 // Activity heatmap: for a given DID, count records by (dayOfWeek, hourOfDay)
 // Uses SQLite date functions on created_at (stored as unix ms)
@@ -11,8 +12,8 @@ export function getActivityHeatmap(
   // strftime('%w', created_at/1000, 'unixepoch') = day of week (0=Sun)
   // strftime('%H', created_at/1000, 'unixepoch') = hour (00-23)
   // GROUP BY dayOfWeek, hourOfDay, COUNT(*)
-  let where = "WHERE repo_did = ? AND created_at IS NOT NULL AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
-  const params: any[] = [did];
+  let where = "WHERE repo_did = ? AND created_at >= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (collection) {
     where += ' AND collection = ?';
     params.push(collection);
@@ -39,8 +40,8 @@ export function getActivityHeatmap(
 export function getActivityTimeline(
   db: Database, did: string, start?: number, end?: number
 ): TimelinePoint[] {
-  let where = "WHERE repo_did = ? AND created_at IS NOT NULL AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
-  const params: any[] = [did];
+  let where = "WHERE repo_did = ? AND created_at >= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
     params.push(start * 1000);
@@ -70,8 +71,8 @@ export function getAvailablePeriods(db: Database, did: string) {
     strftime('%m', created_at/1000, 'unixepoch') as month,
     COUNT(*) as count
   FROM records 
-  WHERE repo_did = ? AND created_at IS NOT NULL AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')
+  WHERE repo_did = ? AND created_at >= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')
   GROUP BY year, month
   ORDER BY year, month`;
-  return db.query(sql).all(did);
+  return db.query(sql).all(did, BLUESKY_EPOCH * 1000);
 }

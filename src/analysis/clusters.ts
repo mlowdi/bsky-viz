@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { ClusterAnalysis, ClusterPost } from '../types.js';
+import { BLUESKY_EPOCH } from '../constants.js';
 
 // Cosine similarity: (A · B) / (||A|| * ||B||)
 function cosineSimilarity(a: Float32Array, b: Float32Array): number {
@@ -111,8 +112,8 @@ export function kMeans(vectors: Float32Array[], k: number, maxIterations: number
 }
 
 export function getClusterAnalysis(db: Database, did: string, k: number = 10, timeBin: string = 'month', start?: number, end?: number): ClusterAnalysis {
-  let where = 'WHERE repo_did = ? AND collection = \'app.bsky.feed.post\' AND embedding IS NOT NULL';
-  const params: any[] = [did];
+  let where = 'WHERE repo_did = ? AND collection = \'app.bsky.feed.post\' AND created_at >= ? AND embedding IS NOT NULL';
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (start !== undefined) { where += ' AND created_at >= ?'; params.push(start * 1000); }
   if (end !== undefined) { where += ' AND created_at <= ?'; params.push(end * 1000); }
 

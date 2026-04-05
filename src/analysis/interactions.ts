@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import type { InteractionPartner, RatioData } from '../types.js';
+import { BLUESKY_EPOCH } from '../constants.js';
 
 // Top interaction partners: for likes, reposts, and replies
 // Group by subject_did (for likes/reposts) or reply_parent_did (for posts that are replies)
@@ -7,8 +8,8 @@ import type { InteractionPartner, RatioData } from '../types.js';
 export function getTopInteractions(
   db: Database, did: string, limit: number = 20, start?: number, end?: number
 ): InteractionPartner[] {
-  let timeFilter = '';
-  const timeParams: any[] = [];
+  let timeFilter = ' AND created_at >= ?';
+  const timeParams: any[] = [BLUESKY_EPOCH * 1000];
   if (start !== undefined) {
     timeFilter += ' AND created_at >= ?';
     timeParams.push(start * 1000);
@@ -57,8 +58,8 @@ export function getTopInteractions(
 
 // Content ratios: count of posts vs replies vs reposts vs likes
 export function getContentRatios(db: Database, did: string, start?: number, end?: number): RatioData[] {
-  let where = "WHERE repo_did = ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
-  const params: any[] = [did];
+  let where = "WHERE repo_did = ? AND created_at >= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
     params.push(start * 1000);

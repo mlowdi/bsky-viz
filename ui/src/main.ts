@@ -17,6 +17,7 @@ const timezoneSelect = document.getElementById('timezone-select') as HTMLSelectE
 const timezoneLabel = document.getElementById('timezone-label') as HTMLSpanElement;
 const timezoneContainer = document.getElementById('timezone-container') as HTMLDivElement;
 const embeddingStatus = document.getElementById('embedding-status') as HTMLDivElement;
+const outlierStatus = document.getElementById('outlier-status') as HTMLDivElement;
 
 let currentRange: { start?: number; end?: number; label: string } = { label: 'All Time' };
 let currentDid: string = '';
@@ -126,13 +127,91 @@ function renderSummaryCards(counts: Record<string, number>) {
   ].map(c => `<div class="card"><div class="value">${c.value.toLocaleString()}</div><div class="label">${c.label}</div></div>`).join('');
 }
 
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? text.substring(0, max) + '...' : text;
+}
+
+function showOutlierModal(posts: Array<{ text: string; createdAt: number }>): void {
+  // Remove any existing modal
+  document.getElementById('outlier-modal-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'outlier-modal-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:#111;border:1px solid #222;border-radius:8px;max-width:700px;width:90%;max-height:80vh;display:flex;flex-direction:column;color:#e0e0e0;';
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #222;flex-shrink:0;';
+  const title = document.createElement('h3');
+  title.style.cssText = 'margin:0;font-size:16px;color:#0085ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
+  title.textContent = 'Anachronistic Records (dated before 2023)';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '\u00d7';
+  closeBtn.style.cssText = 'background:none;border:none;color:#e0e0e0;font-size:24px;cursor:pointer;padding:0 0 0 12px;line-height:1;';
+  closeBtn.onclick = () => overlay.remove();
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  // Post count
+  const countBar = document.createElement('div');
+  countBar.style.cssText = 'padding:8px 20px;font-size:13px;color:#888;border-bottom:1px solid #222;flex-shrink:0;';
+  countBar.textContent = `${posts.length} record${posts.length !== 1 ? 's' : ''}`;
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = 'overflow-y:auto;padding:12px 20px;flex:1;';
+
+  const sorted = [...posts].sort((a, b) => a.createdAt - b.createdAt);
+  for (const post of sorted) {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:10px 0;border-bottom:1px solid #1a1a1a;';
+    const time = document.createElement('div');
+    time.style.cssText = 'font-size:12px;color:#666;margin-bottom:4px;';
+    time.textContent = formatDate(post.createdAt);
+    const text = document.createElement('div');
+    text.style.cssText = 'font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;';
+    text.textContent = truncate(post.text, 500);
+    item.appendChild(time);
+    item.appendChild(text);
+    content.appendChild(item);
+  }
+
+  modal.appendChild(header);
+  modal.appendChild(countBar);
+  modal.appendChild(content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Close on backdrop click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Close on Escape
+  const escHandler = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+}
+
 async function refreshCharts() {
   if (!currentDid) return;
   status.textContent = `Refreshing analysis for ${currentHandle || currentDid}...`;
   loadBtn.disabled = true;
 
   try {
-    const [summary, heatmap, timeline, ratios, interactions, follows, blocks, clusters] = await Promise.all([
+    const [summary, heatmap, timeline, ratios, interactions, follows, blocks, clusters, outliers] = await Promise.all([
       api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/heatmap`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
@@ -141,9 +220,24 @@ async function refreshCharts() {
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/follows`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/blocks`),
       api<any>(`/repos/${encodeURIComponent(currentDid)}/clusters?k=10&bin=month`),
+      api<any[]>(`/repos/${encodeURIComponent(currentDid)}/outliers`),
     ]);
 
     renderSummaryCards(summary.counts || {});
+
+    // Outlier status
+    if (outliers && outliers.length > 0) {
+      outlierStatus.innerHTML = `
+        <span>This repo contains ${outliers.length.toLocaleString()} records dated before Bluesky existed</span>
+        <button class="tab-btn" id="view-outliers-btn">View anachronisms</button>
+      `;
+      outlierStatus.classList.remove('hidden');
+      document.getElementById('view-outliers-btn')?.addEventListener('click', () => {
+        showOutlierModal(outliers);
+      });
+    } else {
+      outlierStatus.classList.add('hidden');
+    }
 
     const themeRiverContainer = document.getElementById('themeriver-container');
     const embeddings = summary.embeddings as { totalPosts: number; embeddedPosts: number } | undefined;
