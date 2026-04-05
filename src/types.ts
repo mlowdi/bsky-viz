@@ -66,7 +66,14 @@ export interface SocialEvent {
   subject_did: string;
 }
 
+export interface ClusterPost {
+  clusterId: number;
+  text: string;
+  createdAt: number;
+}
+
 export interface ClusterAnalysis {
   clusters: Array<{ id: number; label: string }>;
   series: Array<{ date: string; clusterId: number; count: number }>;
+  posts: ClusterPost[];
 }
