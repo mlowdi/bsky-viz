@@ -8,8 +8,8 @@ import { BLUESKY_EPOCH } from '../constants.js';
 export function getTopInteractions(
   db: Database, did: string, limit: number = 20, start?: number, end?: number
 ): InteractionPartner[] {
-  let timeFilter = ' AND created_at >= ?';
-  const timeParams: any[] = [BLUESKY_EPOCH * 1000];
+  let timeFilter = ' AND created_at >= ? AND created_at <= ?';
+  const timeParams: any[] = [BLUESKY_EPOCH * 1000, Date.now()];
   if (start !== undefined) {
     timeFilter += ' AND created_at >= ?';
     timeParams.push(start * 1000);
