@@ -5,17 +5,9 @@
 - ~~ThemeRiver display toggle~~ — proportional vs volume (PR #10)
 - ~~Embedding status indicator~~ — shows CLI command when missing (PR #9)
 - ~~Timestamp clamping~~ — pre-2023 and future records quarantined to anachronisms view (PR #13, #14)
-
-## Wave 1: Time Series Intelligence (next up)
-
-### Heatmap collection filter
-The backend already supports `?collection=` on the heatmap endpoint but there's no UI. Add tab-btn switcher: All / Posts / Likes / Reposts / Follows / Blocks. Lets you see posting hours vs liking hours vs blocking hours — very different behavioral signatures.
-
-### Typical day profile
-Collapse the heatmap into a 24-hour stacked bar chart. 3-4 hour bins, stacked by action type. Shows behavioral rhythm: "morning liker, evening poster" vs "all-day reply-guy." The signature of how someone uses the platform across a day.
-
-### Sleep window detection
-Find the longest daily gap between events for each day. Plot over time as a chart — x-axis is date, y-axis shows the sleep window (start hour to end hour). Shift workers, insomniacs, and bots have distinctive signatures. Could derive a "regularity score" from variance of sleep onset/offset times.
+- ~~Heatmap collection filter~~ — tab switcher for All/Posts+Replies/Likes/Reposts/Follows/Blocks (PR #15)
+- ~~Typical day profile~~ — 24h stacked bar by action type, timezone-aware (PR #16)
+- ~~Sleep window detection~~ — longest daily gap plotted over time, midnight-wrapping, 16h cap, timezone-aware
 
 ## Wave 2: Anomaly Detection
 
