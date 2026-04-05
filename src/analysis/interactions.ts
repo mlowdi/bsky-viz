@@ -58,8 +58,8 @@ export function getTopInteractions(
 
 // Content ratios: count of posts vs replies vs reposts vs likes
 export function getContentRatios(db: Database, did: string, start?: number, end?: number): RatioData[] {
-  let where = "WHERE repo_did = ? AND created_at >= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
-  const params: any[] = [did, BLUESKY_EPOCH * 1000];
+  let where = "WHERE repo_did = ? AND created_at >= ? AND created_at <= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000, Date.now()];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
     params.push(start * 1000);

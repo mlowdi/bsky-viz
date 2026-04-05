@@ -228,7 +228,7 @@ async function refreshCharts() {
     // Outlier status
     if (outliers && outliers.length > 0) {
       outlierStatus.innerHTML = `
-        <span>This repo contains ${outliers.length.toLocaleString()} records dated before Bluesky existed</span>
+        <span>This repo contains ${outliers.length.toLocaleString()} records with anachronistic dates</span>
         <button class="tab-btn" id="view-outliers-btn">View anachronisms</button>
       `;
       outlierStatus.classList.remove('hidden');
