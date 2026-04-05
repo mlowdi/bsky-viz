@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import { ClusterAnalysis } from '../types.js';
+import { ClusterAnalysis, ClusterPost } from '../types.js';
 
 // Cosine similarity: (A · B) / (||A|| * ||B||)
 function cosineSimilarity(a: Float32Array, b: Float32Array): number {
@@ -125,7 +125,7 @@ export function getClusterAnalysis(db: Database, did: string, k: number = 10, ti
   const rows = db.query(sql).all(...params) as { id: number, created_at: number, raw_json: string, embedding: Uint8Array }[];
 
   if (rows.length === 0) {
-    return { clusters: [], series: [] };
+    return { clusters: [], series: [], posts: [] };
   }
 
   const vectors = rows.map(row => new Float32Array(new Uint8Array(row.embedding).buffer));
@@ -157,6 +157,25 @@ export function getClusterAnalysis(db: Database, did: string, k: number = 10, ti
       }
     }
     clusters.push({ id: j, label });
+  }
+
+  // Build posts array from rows that have raw_json
+  const posts: ClusterPost[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (!rows[i].raw_json) continue;
+    try {
+      const parsed = JSON.parse(rows[i].raw_json);
+      const text = parsed.text;
+      if (text) {
+        posts.push({
+          clusterId: assignments[i],
+          text,
+          createdAt: rows[i].created_at,
+        });
+      }
+    } catch {
+      // skip unparseable
+    }
   }
 
   // Bin by time and count
@@ -192,5 +211,5 @@ export function getClusterAnalysis(db: Database, did: string, k: number = 10, ti
   // Sort series by date then clusterId
   series.sort((a, b) => a.date.localeCompare(b.date) || a.clusterId - b.clusterId);
 
-  return { clusters, series };
+  return { clusters, series, posts };
 }
