@@ -3,7 +3,7 @@ import { renderTimeline } from './charts/timeline.js';
 import { renderRatios } from './charts/ratios.js';
 import { renderInteractions } from './charts/interaction-network.js';
 import { renderSocial } from './charts/social-timeline.js';
-import { renderThemeRiver } from './charts/themeriver.js';
+import { renderThemeRiver, setThemeRiverMode } from './charts/themeriver.js';
 import { shiftHeatmapData, currentOffsetHours, setOffsetHours, getTimezoneLabel } from './timezone.js';
 
 const didInput = document.getElementById('did-input') as HTMLInputElement;
@@ -225,5 +225,18 @@ timezoneSelect.addEventListener('change', () => {
   refreshCharts();
 });
 timezoneLabel.textContent = getTimezoneLabel();
+
+const themeriverSwitcher = document.getElementById('themeriver-switcher');
+if (themeriverSwitcher) {
+  themeriverSwitcher.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('tab-btn')) {
+      themeriverSwitcher.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      target.classList.add('active');
+      const mode = target.getAttribute('data-mode') as 'normalized' | 'absolute';
+      setThemeRiverMode(mode);
+    }
+  });
+}
 
 loadRepoList();
