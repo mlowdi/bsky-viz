@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import type { HeatmapCell, TimelinePoint } from '../types.js';
+import type { HeatmapCell, TimelinePoint, TypicalDayPoint } from '../types.js';
 import { BLUESKY_EPOCH } from '../constants.js';
 
 // Activity heatmap: for a given DID, count records by (dayOfWeek, hourOfDay)
@@ -63,6 +63,34 @@ export function getActivityTimeline(
     GROUP BY date, collection
     ORDER BY date`;
   return db.query(sql).all(...params) as TimelinePoint[];
+}
+
+export function getTypicalDay(
+  db: Database, did: string, start?: number, end?: number
+): TypicalDayPoint[] {
+  let where = "WHERE repo_did = ? AND created_at >= ? AND created_at <= ? AND collection NOT IN ('app.bsky.feed.threadgate', 'app.bsky.feed.postgate', 'app.bsky.graph.listblock', 'app.bsky.graph.listitem', 'app.bsky.graph.list', 'app.bsky.actor.profile')";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000, Date.now()];
+  if (start !== undefined) {
+    where += ' AND created_at >= ?';
+    params.push(start * 1000);
+  }
+  if (end !== undefined) {
+    where += ' AND created_at <= ?';
+    params.push(end * 1000);
+  }
+  const sql = `SELECT
+    CAST(strftime('%H', created_at/1000, 'unixepoch') AS INTEGER) as hour,
+    CASE
+      WHEN collection = 'app.bsky.feed.post' AND is_reply = 1 THEN 'reply'
+      WHEN collection = 'app.bsky.feed.post' AND (is_reply = 0 OR is_reply IS NULL) THEN 'original_post'
+      ELSE collection
+    END as collection,
+    COUNT(*) as count
+    FROM records
+    ${where}
+    GROUP BY hour, collection
+    ORDER BY hour`;
+  return db.query(sql).all(...params) as TypicalDayPoint[];
 }
 
 export function getAvailablePeriods(db: Database, did: string) {
