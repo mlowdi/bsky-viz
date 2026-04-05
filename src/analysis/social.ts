@@ -1,10 +1,11 @@
 import { Database } from 'bun:sqlite';
 import type { SocialEvent } from '../types.js';
+import { BLUESKY_EPOCH } from '../constants.js';
 
 // Follow timeline: all follow events ordered by time
 export function getFollowTimeline(db: Database, did: string, start?: number, end?: number): SocialEvent[] {
-  let where = "WHERE repo_did = ? AND collection = 'app.bsky.graph.follow' AND created_at IS NOT NULL";
-  const params: any[] = [did];
+  let where = "WHERE repo_did = ? AND collection = 'app.bsky.graph.follow' AND created_at >= ?";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
     params.push(start * 1000);
@@ -22,8 +23,8 @@ export function getFollowTimeline(db: Database, did: string, start?: number, end
 
 // Block timeline: all block events ordered by time
 export function getBlockTimeline(db: Database, did: string, start?: number, end?: number): SocialEvent[] {
-  let where = "WHERE repo_did = ? AND collection = 'app.bsky.graph.block' AND created_at IS NOT NULL";
-  const params: any[] = [did];
+  let where = "WHERE repo_did = ? AND collection = 'app.bsky.graph.block' AND created_at >= ?";
+  const params: any[] = [did, BLUESKY_EPOCH * 1000];
   if (start !== undefined) {
     where += ' AND created_at >= ?';
     params.push(start * 1000);

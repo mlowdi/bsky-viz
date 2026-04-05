@@ -95,3 +95,30 @@ export function getPostsWithoutEmbeddings(db: Database, did: string): { id: numb
     "SELECT id, raw_json FROM records WHERE repo_did = ? AND collection = 'app.bsky.feed.post' AND embedding IS NULL AND raw_json IS NOT NULL"
   ).all(did) as { id: number; raw_json: string }[];
 }
+
+export function getOutlierRecords(db: Database, did: string): { text: string; createdAt: number; collection: string }[] {
+  const BLUESKY_EPOCH_MS = 1672531200 * 1000;
+  const sql = `
+    SELECT raw_json, created_at, collection
+    FROM records
+    WHERE repo_did = ? AND created_at < ? AND raw_json IS NOT NULL
+  `;
+  const rows = db.query(sql).all(did, BLUESKY_EPOCH_MS) as { raw_json: string; created_at: number; collection: string }[];
+  
+  const outliers: { text: string; createdAt: number; collection: string }[] = [];
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.raw_json);
+      if (parsed.text) {
+        outliers.push({
+          text: parsed.text,
+          createdAt: row.created_at,
+          collection: row.collection
+        });
+      }
+    } catch (e) {
+      // skip
+    }
+  }
+  return outliers;
+}

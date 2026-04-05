@@ -4,7 +4,7 @@ import { getActivityHeatmap, getActivityTimeline, getAvailablePeriods } from '..
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
 import { getClusterAnalysis } from '../../analysis/clusters.js';
-import { getRepos, getRepo, getRecordCount, getEmbeddingStatus } from '../../db/queries.js';
+import { getRepos, getRepo, getRecordCount, getEmbeddingStatus, getOutlierRecords } from '../../db/queries.js';
 import { resolveHandles } from '../../resolve.js';
 
 function getTimeParams(c: any) {
@@ -87,6 +87,11 @@ export function apiRoutes(db: Database): Hono {
     const did = decodeURIComponent(c.req.param('did'));
     const { start, end } = getTimeParams(c);
     return c.json(getBlockTimeline(db, did, start, end));
+  });
+
+  api.get('/repos/:did/outliers', (c) => {
+    const did = decodeURIComponent(c.req.param('did'));
+    return c.json(getOutlierRecords(db, did));
   });
 
   api.get('/repos/:did/clusters', (c) => {
