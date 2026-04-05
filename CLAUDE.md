@@ -72,8 +72,7 @@ All under `/api`:
 
 ## Known Issues / TODOs
 
-- `embedding` BLOB field is always null — needs embedding generator (LAN endpoint available)
-- Heatmap timezone: SQLite uses server-local time, no client timezone offset
+- Timezone: backend aggregates in pure UTC (strftime with 'unixepoch'), frontend applies a static integer hour offset. This means: (a) DST is not accounted for — ~1 hour error for half of historical data, (b) fractional timezones (India +5:30, Nepal +5:45) are rounded to nearest hour. Fix would require passing IANA timezone name to backend and aggregating in-memory with Intl.DateTimeFormat instead of SQL GROUP BY.
 - No WebSocket/polling for live updates after ingestion
 - Input validation is minimal
 
