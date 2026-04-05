@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { Database } from 'bun:sqlite';
-import { getActivityHeatmap, getActivityTimeline, getAvailablePeriods } from '../../analysis/activity.js';
+import { getActivityHeatmap, getActivityTimeline, getTypicalDay, getAvailablePeriods } from '../../analysis/activity.js';
 import { getTopInteractions, getContentRatios } from '../../analysis/interactions.js';
 import { getFollowTimeline, getBlockTimeline } from '../../analysis/social.js';
 import { getClusterAnalysis } from '../../analysis/clusters.js';
@@ -55,6 +55,12 @@ export function apiRoutes(db: Database): Hono {
     const did = decodeURIComponent(c.req.param('did'));
     const { start, end } = getTimeParams(c);
     return c.json(getActivityTimeline(db, did, start, end));
+  });
+
+  api.get('/repos/:did/activity/typical-day', (c) => {
+    const did = decodeURIComponent(c.req.param('did'));
+    const { start, end } = getTimeParams(c);
+    return c.json(getTypicalDay(db, did, start, end));
   });
 
   api.get('/repos/:did/ratios', (c) => {

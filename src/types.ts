@@ -43,6 +43,12 @@ export interface HeatmapCell {
   count: number;
 }
 
+export interface TypicalDayPoint {
+  hour: number;
+  collection: string;
+  count: number;
+}
+
 export interface TimelinePoint {
   date: string;
   collection: string;

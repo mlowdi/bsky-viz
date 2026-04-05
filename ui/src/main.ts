@@ -1,5 +1,6 @@
 import { renderHeatmap } from './charts/activity-heatmap.js';
 import { renderTimeline } from './charts/timeline.js';
+import { renderTypicalDay } from './charts/typical-day.js';
 import { renderRatios } from './charts/ratios.js';
 import { renderInteractions } from './charts/interaction-network.js';
 import { renderSocial } from './charts/social-timeline.js';
@@ -213,10 +214,11 @@ async function refreshCharts() {
 
   try {
     const heatmapPath = `/repos/${encodeURIComponent(currentDid)}/activity/heatmap${currentHeatmapCollection ? `?collection=${currentHeatmapCollection}` : ''}`;
-    const [summary, heatmap, timeline, ratios, interactions, follows, blocks, clusters, outliers] = await Promise.all([
+    const [summary, heatmap, timeline, typicalDay, ratios, interactions, follows, blocks, clusters, outliers] = await Promise.all([
       api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
       api<any[]>(heatmapPath),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
+      api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/typical-day`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/ratios`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/interactions/top`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/follows`),
@@ -270,6 +272,7 @@ async function refreshCharts() {
 
     renderHeatmap('heatmap-chart', shiftHeatmapData(heatmap, currentOffsetHours));
     renderTimeline('timeline-chart', timeline);
+    renderTypicalDay('typical-day-chart', typicalDay);
     renderRatios('ratios-chart', ratios);
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
