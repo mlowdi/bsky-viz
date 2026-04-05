@@ -274,11 +274,11 @@ async function refreshCharts() {
 
     renderHeatmap('heatmap-chart', shiftHeatmapData(heatmap, currentOffsetHours));
     renderTimeline('timeline-chart', timeline);
-    renderTypicalDay('typical-day-chart', typicalDay);
+    renderTypicalDay('typical-day-chart', typicalDay, currentOffsetHours);
     renderRatios('ratios-chart', ratios);
     renderInteractions('interactions-chart', interactions);
     renderSocial('social-chart', follows, blocks);
-    renderSleepPattern('sleep-chart', sleep);
+    renderSleepPattern('sleep-chart', sleep, currentOffsetHours);
 
     renderBreadcrumb();
 

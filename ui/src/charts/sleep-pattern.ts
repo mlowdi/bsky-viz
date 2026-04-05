@@ -13,7 +13,9 @@ function formatHour(h: number): string {
   return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
 }
 
-export function renderSleepPattern(containerId: string, data: SleepWindow[]) {
+const MAX_SLEEP_MINUTES = 16 * 60; // Cap at 16 hours — longer gaps are absences, not sleep
+
+export function renderSleepPattern(containerId: string, data: SleepWindow[], offsetHours: number = 0) {
   const el = document.getElementById(containerId)!;
   const existingChart = echarts.getInstanceByDom(el);
   const chart = existingChart || echarts.init(el, 'dark');
@@ -22,7 +24,14 @@ export function renderSleepPattern(containerId: string, data: SleepWindow[]) {
     window.addEventListener('resize', () => chart.resize());
   }
 
-  const sortedData = [...data].sort((a, b) => a.date.localeCompare(b.date));
+  const sortedData = [...data]
+    .filter(d => d.gapMinutes <= MAX_SLEEP_MINUTES)
+    .map(d => ({
+      ...d,
+      gapStartHour: ((d.gapStartHour + offsetHours) % 24 + 24) % 24,
+      gapEndHour: ((d.gapEndHour + offsetHours) % 24 + 24) % 24,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
   const dates = sortedData.map(d => d.date);
 
   const seriesData: any[] = [];

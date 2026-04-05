@@ -15,7 +15,7 @@ const SERIES_CONFIG: Record<string, { name: string; color: string }> = {
   'app.bsky.graph.block': { name: 'Blocks', color: '#ff922b' },
 };
 
-export function renderTypicalDay(containerId: string, data: TypicalDayPoint[]) {
+export function renderTypicalDay(containerId: string, data: TypicalDayPoint[], offsetHours: number = 0) {
   const el = document.getElementById(containerId)!;
   const existingChart = echarts.getInstanceByDom(el);
   const chart = existingChart || echarts.init(el, 'dark');
@@ -32,9 +32,9 @@ export function renderTypicalDay(containerId: string, data: TypicalDayPoint[]) {
     const seriesData = Array(24).fill(0);
     
     data.filter(d => d.collection === col).forEach(d => {
-      if (d.hour >= 0 && d.hour < 24) {
-        seriesData[d.hour] = d.count;
-      }
+      let shifted = (d.hour + offsetHours) % 24;
+      if (shifted < 0) shifted += 24;
+      seriesData[shifted] = d.count;
     });
 
     return {
