@@ -24,6 +24,7 @@ let currentRange: { start?: number; end?: number; label: string } = { label: 'Al
 let currentDid: string = '';
 let currentHandle: string = '';
 let periods: Array<{ year: string; month: string; count: number }> = [];
+let currentHeatmapCollection: string = '';
 
 async function api<T>(path: string): Promise<T> {
   let url = `/api${path}`;
@@ -212,9 +213,10 @@ async function refreshCharts() {
   loadBtn.disabled = true;
 
   try {
+    const heatmapPath = `/repos/${encodeURIComponent(currentDid)}/activity/heatmap${currentHeatmapCollection ? `?collection=${currentHeatmapCollection}` : ''}`;
     const [summary, heatmap, timeline, typicalDay, ratios, interactions, follows, blocks, clusters, outliers] = await Promise.all([
       api<any>(`/repos/${encodeURIComponent(currentDid)}/summary`),
-      api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/heatmap`),
+      api<any[]>(heatmapPath),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/timeline`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/typical-day`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/ratios`),
@@ -352,6 +354,19 @@ if (themeriverSwitcher) {
       target.classList.add('active');
       const mode = target.getAttribute('data-mode') as 'normalized' | 'absolute';
       setThemeRiverMode(mode);
+    }
+  });
+}
+
+const heatmapSwitcher = document.getElementById('heatmap-switcher');
+if (heatmapSwitcher) {
+  heatmapSwitcher.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('tab-btn')) {
+      heatmapSwitcher.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      target.classList.add('active');
+      currentHeatmapCollection = target.getAttribute('data-collection') || '';
+      refreshCharts();
     }
   });
 }
