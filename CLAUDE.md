@@ -87,5 +87,5 @@ cd ui && bun build src/main.ts --outdir=dist  # alternative direct build
 
 - Use `spawn_worker` / `spawn_gemini` for ALL implementation work — Gemini workers are 10-30x cheaper than Opus tokens
 - Opus handles planning, task decomposition, spec writing, and architectural decisions only
-- Workers run in the main directory (no isolation) for simple edits, or use `fork_wave` for branch-isolated changes
+- `spawn_worker` agents run in the main directory (no isolation) for simple edits, or use `spawn_gemini` for worktree-isolated changes
 - Stale worktrees and branches should be cleaned after merging
