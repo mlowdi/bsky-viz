@@ -36,7 +36,7 @@ if (command === 'ingest') {
   console.log(`Parsed ${rawRecords.length} records`);
 
   console.log('Normalizing and storing...');
-  const normalized = normalizeRecords(did, rawRecords);
+  const { records: normalized, unknown } = normalizeRecords(did, rawRecords);
 
   // Resolve handle for display
   const handles = await resolveHandles(db, [did]);
@@ -59,6 +59,13 @@ if (command === 'ingest') {
   console.log('\nIngested records:');
   for (const [col, count] of Object.entries(counts).sort((a, b) => b[1] - a[1])) {
     console.log(`  ${col}: ${count}`);
+  }
+  const unknownEntries = Object.entries(unknown).sort((a, b) => b[1] - a[1]);
+  if (unknownEntries.length > 0) {
+    console.log('\nUnknown records in repo (not stored):');
+    for (const [col, count] of unknownEntries) {
+      console.log(`  ${col}: ${count}`);
+    }
   }
   console.log(`\nTotal: ${normalized.length} records stored.`);
 

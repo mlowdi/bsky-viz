@@ -22,13 +22,14 @@ function extractDidFromUri(uri: string): string | null {
   return match ? match[1] : null;
 }
 
-export function normalizeRecords(did: string, rawRecords: RawRecord[]): RecordRow[] {
+export function normalizeRecords(did: string, rawRecords: RawRecord[]): { records: RecordRow[], unknown: Record<string, number> } {
   const normalized: RecordRow[] = [];
+  const unknown: Record<string, number> = {};
   const now = Date.now();
 
   for (const raw of rawRecords) {
     if (!KNOWN_COLLECTIONS.has(raw.collection as Collection)) {
-      console.warn(`Unknown record type: ${raw.collection}`);
+      unknown[raw.collection] = (unknown[raw.collection] || 0) + 1;
       continue;
     }
 
@@ -97,5 +98,5 @@ export function normalizeRecords(did: string, rawRecords: RawRecord[]): RecordRo
     normalized.push(row);
   }
 
-  return normalized;
+  return { records: normalized, unknown };
 }
