@@ -1,8 +1,9 @@
+import { Database } from 'bun:sqlite';
 import { initDatabase } from './src/db/schema.js';
 import { fetchRepo } from './src/ingest/fetch.js';
 import { parseCarRecords } from './src/ingest/parse.js';
 import { normalizeRecords } from './src/ingest/normalize.js';
-import { upsertRepo, insertRecordBatch } from './src/db/queries.js';
+import { upsertRepo, insertRecordBatch, getPostsWithoutEmbeddings } from './src/db/queries.js';
 import { resolveHandles } from './src/resolve.js';
 import { createApp } from './src/server/index.js';
 import { embedRecords } from './src/embed.js';
@@ -11,20 +12,25 @@ import { ModelHost } from './src/llm/host.js';
 
 const command = process.argv[2];
 
-if (command === 'ingest') {
-  const input = process.argv[3];
-  if (!input) {
-    console.error('Usage: bun run cli.ts ingest <did-or-handle> [--refresh]');
+function flagValue(name: string): string | undefined {
+  const i = process.argv.indexOf(name);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : undefined;
+}
+
+function requireRepo(db: Database, input: string): string {
+  const repo = db.query('SELECT did FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
+  if (!repo) {
+    console.error(`Repo not found for ${input}. Please ingest it first.`);
     process.exit(1);
   }
-  const refresh = process.argv.includes('--refresh');
-  const db = initDatabase();
+  return repo.did;
+}
 
-  // Check if already ingested
-  const existing = db.query('SELECT * FROM repos WHERE did = ? OR handle = ?').get(input, input);
+async function doIngest(db: Database, input: string, refresh: boolean): Promise<string | null> {
+  const existing = db.query('SELECT did FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
   if (existing && !refresh) {
     console.log(`Already ingested. Use --refresh to re-fetch.`);
-    process.exit(0);
+    return existing.did;
   }
 
   console.log(`Fetching repo for ${input}...`);
@@ -38,7 +44,6 @@ if (command === 'ingest') {
   console.log('Normalizing and storing...');
   const { records: normalized, unknown, anachronistic } = normalizeRecords(did, rawRecords);
 
-  // Resolve handle for display
   const handles = await resolveHandles(db, [did]);
   const handle = handles[did] || (input.startsWith('did:') ? null : input);
 
@@ -51,7 +56,6 @@ if (command === 'ingest') {
   });
   insertRecordBatch(db, normalized);
 
-  // Print summary
   const counts: Record<string, number> = {};
   for (const r of normalized) {
     counts[r.collection] = (counts[r.collection] || 0) + 1;
@@ -76,6 +80,38 @@ if (command === 'ingest') {
     );
   }
   console.log(`\nTotal: ${normalized.length} records stored.`);
+  return did;
+}
+
+async function doEmbed(db: Database, did: string, opts: { batchSize: number, model?: string, url?: string, host?: ModelHost }): Promise<void> {
+  console.log(`Embedding posts for ${did}...`);
+  if (getPostsWithoutEmbeddings(db, did).length === 0) {
+    console.log('Nothing to embed.');
+    return;
+  }
+  if (opts.url) {
+    const count = await embedRecords(db, did, { batchSize: opts.batchSize, model: opts.model, baseUrl: opts.url });
+    console.log(`\nEmbedded ${count} posts for DID: ${did}`);
+    return;
+  }
+  const host = opts.host ?? new ModelHost();
+  try {
+    await host.ensure('embed');
+    const count = await embedRecords(db, did, { batchSize: opts.batchSize, model: opts.model, baseUrl: host.base });
+    console.log(`\nEmbedded ${count} posts for DID: ${did}`);
+  } finally {
+    if (!opts.host) host.stop();
+  }
+}
+
+if (command === 'ingest') {
+  const input = process.argv[3];
+  if (!input) {
+    console.error('Usage: bun run cli.ts ingest <did-or-handle> [--refresh]');
+    process.exit(1);
+  }
+  const db = initDatabase();
+  await doIngest(db, input, process.argv.includes('--refresh'));
 
 } else if (command === 'serve') {
   const port = parseInt(process.argv[3] || '3000');
@@ -90,42 +126,13 @@ if (command === 'ingest') {
     console.error('Usage: bun run cli.ts embed <did-or-handle> [--model model] [--batch-size size] [--url url]');
     process.exit(1);
   }
-  
-  let model: string | undefined;
-  let batchSize = 50;
-  let url: string | undefined;
-
-  for (let i = 4; i < process.argv.length; i++) {
-    if (process.argv[i] === '--model' && process.argv[i+1]) {
-      model = process.argv[++i];
-    } else if (process.argv[i] === '--batch-size' && process.argv[i+1]) {
-      batchSize = parseInt(process.argv[++i], 10);
-    } else if (process.argv[i] === '--url' && process.argv[i+1]) {
-      url = process.argv[++i];
-    }
-  }
-
   const db = initDatabase();
-  const repo = db.query('SELECT * FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
-  if (!repo) {
-    console.error(`Repo not found for ${input}. Please ingest it first.`);
-    process.exit(1);
-  }
-
-  console.log(`Embedding posts for ${repo.did}...`);
-  if (url) {
-    const count = await embedRecords(db, repo.did, { batchSize, model, baseUrl: url });
-    console.log(`\nEmbedded ${count} posts for DID: ${repo.did}`);
-  } else {
-    const host = new ModelHost();
-    try {
-      await host.ensure('embed');
-      const count = await embedRecords(db, repo.did, { batchSize, model, baseUrl: host.base });
-      console.log(`\nEmbedded ${count} posts for DID: ${repo.did}`);
-    } finally {
-      host.stop();
-    }
-  }
+  const did = requireRepo(db, input);
+  await doEmbed(db, did, {
+    batchSize: parseInt(flagValue('--batch-size') || '50', 10),
+    model: flagValue('--model'),
+    url: flagValue('--url'),
+  });
 
 } else if (command === 'cluster') {
   const input = process.argv[3];
@@ -133,33 +140,46 @@ if (command === 'ingest') {
     console.error('Usage: bun run cli.ts cluster <did-or-handle> [--k 10]');
     process.exit(1);
   }
-
-  let k = 10;
-  for (let i = 4; i < process.argv.length; i++) {
-    if (process.argv[i] === '--k' && process.argv[i+1]) {
-      k = parseInt(process.argv[++i], 10);
-    }
-  }
-
   const db = initDatabase();
-  const repo = db.query('SELECT * FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
-  if (!repo) {
-    console.error(`Repo not found for ${input}. Please ingest it first.`);
-    process.exit(1);
-  }
-
+  const did = requireRepo(db, input);
   const host = new ModelHost();
   try {
-    await clusterRepo(db, repo.did, k, host);
+    await clusterRepo(db, did, parseInt(flagValue('--k') || '10', 10), host);
   } finally {
     host.stop();
   }
+
+} else if (command === 'process') {
+  const input = process.argv[3];
+  if (!input) {
+    console.error('Usage: bun run cli.ts process <did-or-handle> [--k 10]');
+    process.exit(1);
+  }
+  const db = initDatabase();
+  const t0 = Date.now();
+
+  console.log('=== ingest ===');
+  const did = await doIngest(db, input, true);
+  if (!did) process.exit(1);
+
+  const host = new ModelHost();
+  try {
+    console.log('\n=== embed ===');
+    await doEmbed(db, did, { batchSize: 50, host });
+
+    console.log('\n=== cluster ===');
+    await clusterRepo(db, did, parseInt(flagValue('--k') || '10', 10), host);
+  } finally {
+    host.stop();
+  }
+  console.log(`\nProcessed ${input} in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
 } else {
   console.log('bsky-viz - ATproto repo metadata analyzer\n');
   console.log('Commands:');
   console.log('  bun run cli.ts ingest <did-or-handle> [--refresh]');
-  console.log('  bun run cli.ts serve [--port]');
   console.log('  bun run cli.ts embed <did-or-handle> [--model string] [--batch-size int] [--url string]');
   console.log('  bun run cli.ts cluster <did-or-handle> [--k 10]');
+  console.log('  bun run cli.ts process <did-or-handle> [--k 10]   # ingest + embed + cluster');
+  console.log('  bun run cli.ts serve [--port]');
 }

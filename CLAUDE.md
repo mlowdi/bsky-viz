@@ -8,6 +8,7 @@ ATproto metadata analysis tool. Fetches a Bluesky user's full repo, stores recor
 bun run cli.ts ingest <did-or-handle>   # fetch + parse + store
 bun run cli.ts embed <did-or-handle>    # embed post texts (spawns its own llama-server)
 bun run cli.ts cluster <did-or-handle> [--k 10]  # persistent clustering + LLM labels
+bun run cli.ts process <did-or-handle> [--k 10]  # ingest (refresh) + embed + cluster in one go
 bun run cli.ts serve                     # start server on :3000
 ```
 

@@ -12,11 +12,24 @@ export function upsertRepo(db: Database, repo: RepoRow): void {
 }
 
 export function insertRecordBatch(db: Database, records: RecordRow[]): void {
+  // True upsert, NOT INSERT OR REPLACE: REPLACE deletes+reinserts, which would
+  // null embeddings and mint new record ids (dangling cluster_assignments).
   const stmt = db.prepare(
-    `INSERT OR REPLACE INTO records
+    `INSERT INTO records
      (repo_did, collection, rkey, created_at, indexed_at, subject_did, subject_uri,
       is_reply, reply_parent_did, reply_root_did, text_length, embed_type, raw_json, embedding)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+     ON CONFLICT(repo_did, collection, rkey) DO UPDATE SET
+       created_at = excluded.created_at,
+       indexed_at = excluded.indexed_at,
+       subject_did = excluded.subject_did,
+       subject_uri = excluded.subject_uri,
+       is_reply = excluded.is_reply,
+       reply_parent_did = excluded.reply_parent_did,
+       reply_root_did = excluded.reply_root_did,
+       text_length = excluded.text_length,
+       embed_type = excluded.embed_type,
+       raw_json = excluded.raw_json`
   );
   const tx = db.transaction((rows: RecordRow[]) => {
     for (const r of rows) {
