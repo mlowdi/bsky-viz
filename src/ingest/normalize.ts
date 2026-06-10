@@ -22,9 +22,18 @@ function extractDidFromUri(uri: string): string | null {
   return match ? match[1] : null;
 }
 
-export function normalizeRecords(did: string, rawRecords: RawRecord[]): { records: RecordRow[], unknown: Record<string, number> } {
+export interface NormalizeResult {
+  records: RecordRow[];
+  unknown: Record<string, number>;
+  anachronistic: { count: number; earliest: number | null; latest: number | null };
+}
+
+const BLUESKY_EPOCH_MS = 1672531200 * 1000;
+
+export function normalizeRecords(did: string, rawRecords: RawRecord[]): NormalizeResult {
   const normalized: RecordRow[] = [];
   const unknown: Record<string, number> = {};
+  const anachronistic = { count: 0, earliest: null as number | null, latest: null as number | null };
   const now = Date.now();
 
   for (const raw of rawRecords) {
@@ -35,6 +44,11 @@ export function normalizeRecords(did: string, rawRecords: RawRecord[]): { record
 
     const { collection, rkey, record } = raw;
     const createdAt = record.createdAt ? new Date(record.createdAt).getTime() : null;
+    if (createdAt !== null && !Number.isNaN(createdAt) && (createdAt < BLUESKY_EPOCH_MS || createdAt > now)) {
+      anachronistic.count++;
+      if (anachronistic.earliest === null || createdAt < anachronistic.earliest) anachronistic.earliest = createdAt;
+      if (anachronistic.latest === null || createdAt > anachronistic.latest) anachronistic.latest = createdAt;
+    }
 
     const row: RecordRow = {
       repo_did: did,
@@ -98,5 +112,5 @@ export function normalizeRecords(did: string, rawRecords: RawRecord[]): { record
     normalized.push(row);
   }
 
-  return { records: normalized, unknown };
+  return { records: normalized, unknown, anachronistic };
 }

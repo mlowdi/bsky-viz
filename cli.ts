@@ -36,7 +36,7 @@ if (command === 'ingest') {
   console.log(`Parsed ${rawRecords.length} records`);
 
   console.log('Normalizing and storing...');
-  const { records: normalized, unknown } = normalizeRecords(did, rawRecords);
+  const { records: normalized, unknown, anachronistic } = normalizeRecords(did, rawRecords);
 
   // Resolve handle for display
   const handles = await resolveHandles(db, [did]);
@@ -66,6 +66,14 @@ if (command === 'ingest') {
     for (const [col, count] of unknownEntries) {
       console.log(`  ${col}: ${count}`);
     }
+  }
+  if (anachronistic.count > 0) {
+    const fmt = (ms: number) => new Date(ms).toISOString().split('T')[0];
+    console.log(
+      `\nAnachronistic timestamps: ${anachronistic.count} records outside ` +
+      `[2023-01-01, today] (${fmt(anachronistic.earliest!)} … ${fmt(anachronistic.latest!)}). ` +
+      `Stored, but hidden from time-binned views.`
+    );
   }
   console.log(`\nTotal: ${normalized.length} records stored.`);
 
