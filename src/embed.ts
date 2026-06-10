@@ -3,19 +3,21 @@ import { updateEmbedding, getPostsWithoutEmbeddings } from './db/queries.js';
 
 async function embedBatch(texts: string[], model: string, baseUrl: string): Promise<number[][] | null> {
   try {
-    const res = await fetch(`${baseUrl}/api/embed`, {
+    const res = await fetch(`${baseUrl}/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, input: texts })
     });
 
     if (!res.ok) {
-      console.error(`Ollama API error: ${res.status} ${res.statusText}`);
+      console.error(`Embeddings API error: ${res.status} ${res.statusText}`);
       return null;
     }
 
     const data = await res.json() as any;
-    return data.embeddings || null;
+    if (!Array.isArray(data.data)) return null;
+    const sorted = [...data.data].sort((a: any, b: any) => a.index - b.index);
+    return sorted.map((d: any) => d.embedding);
   } catch (err) {
     console.error(`Failed to embed texts:`, err);
     return null;
@@ -23,8 +25,8 @@ async function embedBatch(texts: string[], model: string, baseUrl: string): Prom
 }
 
 export async function embedTexts(texts: string[], opts?: { model?: string, baseUrl?: string }): Promise<number[][]> {
-  const model = opts?.model || 'snowflake-arctic-embed2';
-  const baseUrl = opts?.baseUrl || 'http://localhost:11434';
+  const model = opts?.model || 'embed';
+  const baseUrl = opts?.baseUrl || 'http://localhost:8092/v1';
 
   const results: number[][] = [];
   const chunkSize = 10;

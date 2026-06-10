@@ -224,7 +224,7 @@ async function refreshCharts() {
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/interactions/top`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/follows`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/social/blocks`),
-      api<any>(`/repos/${encodeURIComponent(currentDid)}/clusters?k=10&bin=month`),
+      api<any>(`/repos/${encodeURIComponent(currentDid)}/clusters?bin=month`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/outliers`),
       api<any[]>(`/repos/${encodeURIComponent(currentDid)}/activity/sleep`),
     ]);

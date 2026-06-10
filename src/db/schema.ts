@@ -34,7 +34,36 @@ CREATE TABLE IF NOT EXISTS handle_cache (
   resolved_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS cluster_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repo_did TEXT NOT NULL,
+  k INTEGER NOT NULL,
+  params_hash TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  is_current INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS clusters (
+  run_id INTEGER NOT NULL REFERENCES cluster_runs(id),
+  cluster_id INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  label_source TEXT NOT NULL,
+  centroid BLOB NOT NULL,
+  coherence REAL,
+  color_index INTEGER,
+  PRIMARY KEY (run_id, cluster_id)
+);
+
+CREATE TABLE IF NOT EXISTS cluster_assignments (
+  run_id INTEGER NOT NULL,
+  record_id INTEGER NOT NULL REFERENCES records(id),
+  cluster_id INTEGER NOT NULL,
+  similarity REAL NOT NULL,
+  PRIMARY KEY (run_id, record_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_records_repo_collection ON records(repo_did, collection);
+CREATE INDEX IF NOT EXISTS idx_cluster_runs_repo ON cluster_runs(repo_did, is_current);
 CREATE INDEX IF NOT EXISTS idx_records_created_at ON records(created_at);
 CREATE INDEX IF NOT EXISTS idx_records_subject_did ON records(subject_did);
 `;

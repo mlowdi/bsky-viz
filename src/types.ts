@@ -79,7 +79,7 @@ export interface ClusterPost {
 }
 
 export interface ClusterAnalysis {
-  clusters: Array<{ id: number; label: string }>;
+  clusters: Array<{ id: number; label: string; labelSource: string; coherence: number | null; colorIndex: number | null; misc: boolean }>;
   series: Array<{ date: string; clusterId: number; count: number }>;
   posts: ClusterPost[];
 }

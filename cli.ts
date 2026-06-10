@@ -6,6 +6,8 @@ import { upsertRepo, insertRecordBatch } from './src/db/queries.js';
 import { resolveHandles } from './src/resolve.js';
 import { createApp } from './src/server/index.js';
 import { embedRecords } from './src/embed.js';
+import { clusterRepo } from './src/cluster.js';
+import { ModelHost } from './src/llm/host.js';
 
 const command = process.argv[2];
 
@@ -74,10 +76,10 @@ if (command === 'ingest') {
     process.exit(1);
   }
   
-  let model = 'snowflake-arctic-embed2';
+  let model: string | undefined;
   let batchSize = 50;
-  let url = 'http://localhost:11434';
-  
+  let url: string | undefined;
+
   for (let i = 4; i < process.argv.length; i++) {
     if (process.argv[i] === '--model' && process.argv[i+1]) {
       model = process.argv[++i];
@@ -87,17 +89,56 @@ if (command === 'ingest') {
       url = process.argv[++i];
     }
   }
-  
+
   const db = initDatabase();
   const repo = db.query('SELECT * FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
   if (!repo) {
     console.error(`Repo not found for ${input}. Please ingest it first.`);
     process.exit(1);
   }
-  
+
   console.log(`Embedding posts for ${repo.did}...`);
-  const count = await embedRecords(db, repo.did, { batchSize, model, baseUrl: url });
-  console.log(`\nEmbedded ${count} posts for DID: ${repo.did}`);
+  if (url) {
+    const count = await embedRecords(db, repo.did, { batchSize, model, baseUrl: url });
+    console.log(`\nEmbedded ${count} posts for DID: ${repo.did}`);
+  } else {
+    const host = new ModelHost();
+    try {
+      await host.ensure('embed');
+      const count = await embedRecords(db, repo.did, { batchSize, model, baseUrl: host.base });
+      console.log(`\nEmbedded ${count} posts for DID: ${repo.did}`);
+    } finally {
+      host.stop();
+    }
+  }
+
+} else if (command === 'cluster') {
+  const input = process.argv[3];
+  if (!input) {
+    console.error('Usage: bun run cli.ts cluster <did-or-handle> [--k 10]');
+    process.exit(1);
+  }
+
+  let k = 10;
+  for (let i = 4; i < process.argv.length; i++) {
+    if (process.argv[i] === '--k' && process.argv[i+1]) {
+      k = parseInt(process.argv[++i], 10);
+    }
+  }
+
+  const db = initDatabase();
+  const repo = db.query('SELECT * FROM repos WHERE did = ? OR handle = ?').get(input, input) as { did: string } | null;
+  if (!repo) {
+    console.error(`Repo not found for ${input}. Please ingest it first.`);
+    process.exit(1);
+  }
+
+  const host = new ModelHost();
+  try {
+    await clusterRepo(db, repo.did, k, host);
+  } finally {
+    host.stop();
+  }
 
 } else {
   console.log('bsky-viz - ATproto repo metadata analyzer\n');
@@ -105,4 +146,5 @@ if (command === 'ingest') {
   console.log('  bun run cli.ts ingest <did-or-handle> [--refresh]');
   console.log('  bun run cli.ts serve [--port]');
   console.log('  bun run cli.ts embed <did-or-handle> [--model string] [--batch-size int] [--url string]');
+  console.log('  bun run cli.ts cluster <did-or-handle> [--k 10]');
 }

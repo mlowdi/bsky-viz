@@ -1,7 +1,7 @@
 import * as echarts from 'echarts';
 
 interface ClusterData {
-  clusters: Array<{ id: number; label: string }>;
+  clusters: Array<{ id: number; label: string; colorIndex?: number | null; misc?: boolean }>;
   series: Array<{ date: string; clusterId: number; count: number }>;
   posts?: Array<{ clusterId: number; text: string; createdAt: number }>;
 }
@@ -111,11 +111,15 @@ export function renderThemeRiver(containerId: string, data: ClusterData): void {
   }
 
   const clusterMap = new Map<number, string>();
-  data.clusters.forEach(c => clusterMap.set(c.id, c.label));
+  let miscN = 0;
+  data.clusters.forEach(c => {
+    const name = c.misc ? (++miscN > 1 ? `Misc ${miscN}` : 'Misc') : c.label;
+    clusterMap.set(c.id, name);
+  });
 
   // Build label -> clusterId reverse map for click handler
   const labelToId = new Map<string, number>();
-  data.clusters.forEach(c => labelToId.set(c.label, c.id));
+  clusterMap.forEach((name, id) => labelToId.set(name, id));
 
   let chartData: (string | number)[][];
 
@@ -145,6 +149,33 @@ export function renderThemeRiver(containerId: string, data: ClusterData): void {
     '#f06595', '#ae3ec9', '#20c997', '#fab005', '#e64980', '#4c6ef5',
     '#94d82d', '#fd7e14', '#15aabf', '#be4bdb'
   ];
+  const MISC_GREYS = ['#5c5f66', '#495057', '#6b6f76', '#3f444a'];
+
+  // ECharts assigns themeRiver layer colors by order of first appearance in data,
+  // so build the color array from that order using each cluster's stable colorIndex.
+  const colorByCluster = new Map<number, string>();
+  let miscCount = 0;
+  for (const c of data.clusters) {
+    if (c.misc) {
+      colorByCluster.set(c.id, MISC_GREYS[miscCount++ % MISC_GREYS.length]);
+    } else {
+      const idx = c.colorIndex ?? c.id;
+      colorByCluster.set(c.id, PALETTE[idx % PALETTE.length]);
+    }
+  }
+  const seenNames: string[] = [];
+  const seen = new Set<string>();
+  for (const row of chartData) {
+    const name = String(row[2]);
+    if (!seen.has(name)) {
+      seen.add(name);
+      seenNames.push(name);
+    }
+  }
+  const colors = seenNames.map(name => {
+    const id = labelToId.get(name);
+    return (id !== undefined && colorByCluster.get(id)) || '#888';
+  });
 
   const isNormalized = currentMode === 'normalized';
 
@@ -190,7 +221,7 @@ export function renderThemeRiver(containerId: string, data: ClusterData): void {
         },
         data: chartData,
         label: { show: false },
-        color: PALETTE
+        color: colors
       }
     ]
   });
