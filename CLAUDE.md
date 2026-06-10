@@ -6,6 +6,8 @@ ATproto metadata analysis tool. Fetches a Bluesky user's full repo, stores recor
 
 ```bash
 bun run cli.ts ingest <did-or-handle>   # fetch + parse + store
+bun run cli.ts embed <did-or-handle>    # embed post texts (spawns its own llama-server)
+bun run cli.ts cluster <did-or-handle> [--k 10]  # persistent clustering + LLM labels
 bun run cli.ts serve                     # start server on :3000
 ```
 
@@ -15,7 +17,14 @@ bun run cli.ts serve                     # start server on :3000
 - **Backend:** Hono, bun:sqlite
 - **Frontend:** Vite + ECharts (dark theme), vanilla TypeScript
 - **Ingestion:** @ipld/car, @ipld/dag-cbor, multiformats (CAR parsing, MST walking)
-- **No:** Express, better-sqlite3, React, dotenv
+- **Inference:** llama.cpp llama-server (Vulkan), spawned/swapped/torn down by
+  `src/llm/host.ts` on port 8092 (`BSKYVIZ_LLAMA_PORT`). GGUFs from
+  `~/projects/local-llm/ggufs` (`BSKYVIZ_GGUF_DIR`): arctic-embed-l-v2.0 q8_0
+  for embeddings, gemma-4-E4B for cluster labels. NOTE: ollama's arctic blob
+  does NOT load in upstream llama.cpp (stale GGUF tokenizer metadata) — use
+  the HF conversion. Gemma 4 needs chat_template_kwargs.enable_thinking=false
+  (and still leaks reasoning on E4B; budget max_tokens accordingly).
+- **No:** Express, better-sqlite3, React, dotenv, ollama
 
 ## Architecture
 
@@ -24,6 +33,10 @@ cli.ts                  # Entry point: ingest | serve
 src/
   types.ts              # Shared interfaces
   resolve.ts            # DID -> handle resolution with SQLite cache
+  embed.ts              # post text -> embedding via managed llama-server
+  cluster.ts            # persistent k-means + contrastive LLM labeling + QA (see DESIGN-cluster-labeling.md)
+  llm/
+    host.ts             # ModelHost: spawn/swap/teardown llama-server profiles
   db/
     schema.ts           # initDatabase() — repos, records, handle_cache tables
     queries.ts          # upsertRepo, insertRecordBatch, handle cache helpers
@@ -56,6 +69,9 @@ ui/
   - UNIQUE(repo_did, collection, rkey)
   - Indexes: repo_collection, created_at, subject_did
 - **handle_cache** — did (PK), handle, resolved_at
+- **cluster_runs** — id (PK), repo_did, k, params_hash, created_at, is_current
+- **clusters** — (run_id, cluster_id) PK, label, label_source ('llm'|'centroid-fallback'|'inherited'), centroid BLOB, coherence, color_index
+- **cluster_assignments** — (run_id, record_id) PK, cluster_id, similarity
 
 ## API Endpoints
 
@@ -68,6 +84,7 @@ All under `/api`:
 - `GET /repos/:did/interactions/top?limit=20` — top partners with resolved handles
 - `GET /repos/:did/social/follows` — follow events timeline
 - `GET /repos/:did/social/blocks` — block events timeline
+- `GET /repos/:did/clusters?bin=&start=&end=` — pure read of current cluster run; date range filters series, never re-clusters
 - `GET /resolve-handles?dids=` — batch DID->handle resolution
 
 ## Known Issues / TODOs
