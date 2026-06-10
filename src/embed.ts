@@ -29,7 +29,7 @@ export async function embedTexts(texts: string[], opts?: { model?: string, baseU
   const baseUrl = opts?.baseUrl || 'http://localhost:8092/v1';
 
   const results: number[][] = [];
-  const chunkSize = 10;
+  const chunkSize = 64;
   
   for (let i = 0; i < texts.length; i += chunkSize) {
     const chunk = texts.slice(i, i + chunkSize);
